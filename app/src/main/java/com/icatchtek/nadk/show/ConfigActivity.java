@@ -24,6 +24,7 @@ import java.util.List;
 public class ConfigActivity extends AppCompatActivity {
     private static final String TAG = ConfigActivity.class.getSimpleName();
     private static final String[] supportOptions = {"AWS_KVS_WEBRTC", "AWS_KVS_STREAM", "TINYAI_RTC", "DEBUG"};
+    private static final String[] booleanOptions = {"true", "false"};
     private ImageButton back_btn;
     private Spinner option_spinner;
     private LinearLayout auth_info_layout;
@@ -36,13 +37,15 @@ public class ConfigActivity extends AppCompatActivity {
     private EditText clientid_edt;
     private LinearLayout clientid_layout;
     private LinearLayout debug_info_layout;
-    private EditText srtp_edt;
-    private EditText rtcptwcc_edt;
+    private Spinner srtp_spinner;
+    private Spinner rtcptwcc_spinner;
     private Button save_btn;
     private List<String> supportOptionList;
     private String currentOption = supportOptions[0];
     private int currentOptionIndex = 0;
     private Handler handler = new Handler();
+    private boolean srtp = true;
+    private boolean rtcptwcc = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,12 +64,14 @@ public class ConfigActivity extends AppCompatActivity {
         clientid_edt = findViewById(R.id.clientid_edt);
         clientid_layout = findViewById(R.id.clientid_layout);
         debug_info_layout = findViewById(R.id.debug_info_layout);
-        srtp_edt = findViewById(R.id.srtp_edt);
-        rtcptwcc_edt = findViewById(R.id.rtcptwcc_edt);
+        srtp_spinner = findViewById(R.id.srtp_spinner);
+        rtcptwcc_spinner = findViewById(R.id.rtcptwcc_spinner);
         save_btn = findViewById(R.id.save_btn);
 
 
-        updateSpinner();
+        updateOptionSpinner();
+        updateSrtpSpinner();
+        updateRtcptwccSpinner();
 
         back_btn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -85,7 +90,7 @@ public class ConfigActivity extends AppCompatActivity {
 
     }
 
-    private void updateSpinner() {
+    private void updateOptionSpinner() {
         supportOptionList = new ArrayList<>(Arrays.asList(supportOptions));
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, supportOptionList);
 //        adapter.setDropDownViewResource(android.R.layout.simple_list_item_single_choice);
@@ -122,12 +127,77 @@ public class ConfigActivity extends AppCompatActivity {
         });
     }
 
+    private void updateSrtpSpinner() {
+        ArrayList<String> supportOptionList = new ArrayList<>(Arrays.asList(booleanOptions));
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, supportOptionList);
+//        adapter.setDropDownViewResource(android.R.layout.simple_list_item_single_choice);
+        srtp_spinner.setAdapter(adapter);
+        if (srtp) {
+            srtp_spinner.setSelection(0);
+        } else {
+            srtp_spinner.setSelection(1);
+        }
+
+        srtp_spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (position == 0) {
+                    srtp = true;
+                } else {
+                    srtp = false;
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+
+            }
+        });
+    }
+
+    private void updateRtcptwccSpinner() {
+        ArrayList<String> supportOptionList = new ArrayList<>(Arrays.asList(booleanOptions));
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, supportOptionList);
+//        adapter.setDropDownViewResource(android.R.layout.simple_list_item_single_choice);
+        rtcptwcc_spinner.setAdapter(adapter);
+        if (rtcptwcc) {
+            rtcptwcc_spinner.setSelection(0);
+        } else {
+            rtcptwcc_spinner.setSelection(1);
+        }
+
+        rtcptwcc_spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (position == 0) {
+                    rtcptwcc = true;
+                } else {
+                    rtcptwcc = false;
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+
+            }
+        });
+    }
+
     private void updateCurrentOption() {
         if (currentOptionIndex == 3) {
-            boolean srtp = NADKConfig.getInstance().getSrtp();
-            boolean rtcptwcc = NADKConfig.getInstance().getRtcpTwcc();
-            srtp_edt.setText(srtp ? "true" : "false");
-            rtcptwcc_edt.setText(rtcptwcc ? "true" : "false");
+            srtp = NADKConfig.getInstance().getSrtp();
+            if (srtp) {
+                srtp_spinner.setSelection(0);
+            } else {
+                srtp_spinner.setSelection(1);
+            }
+            rtcptwcc = NADKConfig.getInstance().getRtcpTwcc();
+            if (rtcptwcc) {
+                rtcptwcc_spinner.setSelection(0);
+            } else {
+                rtcptwcc_spinner.setSelection(1);
+            }
+
             auth_info_layout.setVisibility(View.GONE);
             debug_info_layout.setVisibility(View.VISIBLE);
         } else {
@@ -171,10 +241,8 @@ public class ConfigActivity extends AppCompatActivity {
     private void saveCurrentOption() {
 
         if (currentOptionIndex == 3) {
-            String srtp = srtp_edt.getText().toString();
-            String rtcptwcc = rtcptwcc_edt.getText().toString();
-            NADKConfig.getInstance().setSrtp(srtp.equals("true"));
-            NADKConfig.getInstance().setRtcpTwcc(rtcptwcc.equals("true"));
+            NADKConfig.getInstance().setSrtp(srtp);
+            NADKConfig.getInstance().setRtcpTwcc(rtcptwcc);
         } else {
             String channelName = channelname_edt.getText().toString();
             String region = region_edt.getText().toString();

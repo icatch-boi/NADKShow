@@ -306,19 +306,38 @@
                     android:textSize="@dimen/second_title_size"
                     android:textColor="@color/primary_text"
                     android:text="srtp:"/>
-                <EditText
-                    android:id="@+id/srtp_edt"
-                    android:background="@drawable/shape_edit_bg"
+<!--                <EditText-->
+<!--                    android:id="@+id/srtp_edt"-->
+<!--                    android:background="@drawable/shape_edit_bg"-->
+<!--                    android:layout_width="0dp"-->
+<!--                    android:layout_height="40dp"-->
+<!--                    android:layout_weight="3"-->
+<!--                    android:layout_marginLeft="6dp"-->
+<!--                    android:maxLength="60"-->
+<!--                    android:maxLines="1"-->
+<!--                    android:inputType="text"-->
+<!--                    android:textColor="@color/secondary_text"-->
+<!--                    android:textSize="@dimen/second_title_size"-->
+<!--                    android:text="60794b1b4a75705eed8617b8"/>-->
+
+                <RelativeLayout
                     android:layout_width="0dp"
                     android:layout_height="40dp"
                     android:layout_weight="3"
-                    android:layout_marginLeft="6dp"
-                    android:maxLength="60"
-                    android:maxLines="1"
-                    android:inputType="text"
-                    android:textColor="@color/secondary_text"
-                    android:textSize="@dimen/second_title_size"
-                    android:text="60794b1b4a75705eed8617b8"/>
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginLeft="4dp"
+                    android:background="@drawable/shape_edit_bg">
+
+                    <Spinner
+                        android:id="@+id/srtp_spinner"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_gravity="center_vertical"
+                        android:textColor="@color/secondary_text"
+                        android:textSize="@dimen/second_title_size"
+                        />
+
+                </RelativeLayout>
 
             </LinearLayout>
 
@@ -338,18 +357,39 @@
                     android:textSize="@dimen/second_title_size"
                     android:textColor="@color/primary_text"
                     android:text="rtcptwcc:"/>
-                <EditText
-                    android:id="@+id/rtcptwcc_edt"
-                    android:background="@drawable/shape_edit_bg"
+
+
+<!--                <EditText-->
+<!--                    android:id="@+id/rtcptwcc_edt"-->
+<!--                    android:background="@drawable/shape_edit_bg"-->
+<!--                    android:layout_width="0dp"-->
+<!--                    android:layout_height="40dp"-->
+<!--                    android:layout_weight="3"-->
+<!--                    android:layout_marginLeft="6dp"-->
+<!--                    android:maxLength="60"-->
+<!--                    android:maxLines="1"-->
+<!--                    android:inputType="text"-->
+<!--                    android:textColor="@color/secondary_text"-->
+<!--                    android:textSize="@dimen/second_title_size"/>-->
+
+                <RelativeLayout
                     android:layout_width="0dp"
                     android:layout_height="40dp"
                     android:layout_weight="3"
-                    android:layout_marginLeft="6dp"
-                    android:maxLength="60"
-                    android:maxLines="1"
-                    android:inputType="text"
-                    android:textColor="@color/secondary_text"
-                    android:textSize="@dimen/second_title_size"/>
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginLeft="4dp"
+                    android:background="@drawable/shape_edit_bg">
+
+                    <Spinner
+                        android:id="@+id/rtcptwcc_spinner"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_gravity="center_vertical"
+                        android:textColor="@color/secondary_text"
+                        android:textSize="@dimen/second_title_size"
+                        />
+
+                </RelativeLayout>
 
             </LinearLayout>
 

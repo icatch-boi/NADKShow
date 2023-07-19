@@ -48,7 +48,7 @@ public class NADKShowLog implements Logger {
         AppInfo.SDK_VERSION = "3.0.0";
 
         initNADKAppLog(context);
-        enableLog = true;
+
     }
 
     @Override
@@ -174,6 +174,7 @@ public class NADKShowLog implements Logger {
         NADKAppLog.writeLog(NADKAppLogModule.NADK_LOG_MODULE_APP, NADKAppLogLevel.NADK_LOG_LEVEL_INFO, TAG, "initNADKAppLog");
 //        com.tinyai.nadk.applog.NADKAppLog.setLog(14, true);
 //        com.tinyai.nadk.applog.NADKAppLog.setLogLevel(14, NADKAppLogLevel.NADK_LOG_LEVEL_VERB);
+        enableLog = true;
         printfAppInfo();
 
     }
