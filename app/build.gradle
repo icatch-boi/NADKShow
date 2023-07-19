@@ -52,7 +52,7 @@ android {
 }
 
 dependencies {
-//    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation "androidx.appcompat:appcompat:${versions.appcompat}"
     implementation "androidx.constraintlayout:constraintlayout:${versions.constraintlayout}"
 
@@ -74,17 +74,6 @@ dependencies {
     implementation ("com.amazonaws:aws-android-sdk-kinesisvideo-archivedmedia:$aws_version@jar") {  }
     implementation 'com.google.code.gson:gson:2.8.6'    //for webrtc signaling
 
-
-    implementation project(':nadk-applog')
-    implementation project(':nadk-reliant')
-    implementation project(':nadk-streaming')
-    implementation project(':nadk-streaming-render')
-    implementation project(':nadk-streaming-producer')
-    implementation project(':nadk-webrtc')
-    implementation project(':nadk-webrtc-assist')
-//    implementation 'com.google.android.material:material:1.4.0'
-
-//    implementation project(':nadk-native-library')
 
 }
 
