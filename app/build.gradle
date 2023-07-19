@@ -1,0 +1,90 @@
+import java.text.SimpleDateFormat
+
+apply plugin: 'com.android.application'
+
+def appId = rootProject.ext.appId
+def rootAndroidId = rootProject.ext.androidId
+def versions = rootProject.ext.versions
+
+def releaseTime() {
+    SimpleDateFormat formatter = new SimpleDateFormat("yyMMdd_HHmm");
+    Date curDate = new Date(System.currentTimeMillis());
+    return formatter.format(curDate);
+}
+
+android {
+    compileSdkVersion rootAndroidId.compileSdkVersion
+    buildToolsVersion rootAndroidId.buildToolsVersion
+
+    defaultConfig {
+        applicationId appId.app
+        minSdkVersion rootAndroidId.minSdkVersion
+        targetSdkVersion rootAndroidId.targetSdkVersion
+        versionCode rootAndroidId.versionCode
+        versionName rootAndroidId.versionName
+
+        ndk {
+            abiFilters 'armeabi-v7a'
+        }
+
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility 1.8
+        targetCompatibility 1.8
+    }
+
+    android.applicationVariants.all {
+        variant ->
+            variant.outputs.all {
+                def releaseTime = new SimpleDateFormat("yyyyMMdd").format(new Date())
+                outputFileName = "NADKShow_V${defaultConfig.versionName}_${releaseTime}.apk"
+
+            }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation "androidx.appcompat:appcompat:${versions.appcompat}"
+    implementation "androidx.constraintlayout:constraintlayout:${versions.constraintlayout}"
+
+    implementation "com.alibaba:fastjson:${versions.fastjson}"
+
+    api files('libs/basecomponent-debug_0.0.5.aar')
+    api files('libs/baseutil-debug_0.0.16.aar')
+    api files('libs/shaccountmanagementjavasdk-v3.1.19.aar')
+    api 'com.google.android.exoplayer:exoplayer-core:2.14.1'
+    api 'com.google.android.exoplayer:exoplayer-dash:2.14.1'
+    api 'com.google.android.exoplayer:exoplayer-hls:2.14.1'
+    api 'com.google.android.exoplayer:exoplayer-ui:2.14.1'
+    api files('libs/library-exoplayer-transformer-release-2.14.1-tinyai.aar')
+    implementation 'com.contrarywind:Android-PickerView:4.1.9'
+
+    def aws_version = '2.16.5'
+    implementation ("com.amazonaws:aws-android-sdk-kinesisvideo:$aws_version@aar") {  }
+//    implementation ("com.amazonaws:aws-android-sdk-kinesisvideo-signaling:$aws_version@jar") {  }
+    implementation ("com.amazonaws:aws-android-sdk-kinesisvideo-archivedmedia:$aws_version@jar") {  }
+    implementation 'com.google.code.gson:gson:2.8.6'    //for webrtc signaling
+
+
+    implementation project(':nadk-applog')
+    implementation project(':nadk-reliant')
+    implementation project(':nadk-streaming')
+    implementation project(':nadk-streaming-render')
+    implementation project(':nadk-streaming-producer')
+    implementation project(':nadk-webrtc')
+    implementation project(':nadk-webrtc-assist')
+//    implementation 'com.google.android.material:material:1.4.0'
+
+//    implementation project(':nadk-native-library')
+
+}
+

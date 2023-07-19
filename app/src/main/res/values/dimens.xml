@@ -1,0 +1,34 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Default screen margins, per the Android Design guidelines. -->
+    <dimen name="text_size_20">20.0dip</dimen>
+    <dimen name="text_size_16">16.0dip</dimen>
+    <dimen name="space_18">18.0dip</dimen>
+    <dimen name="space_16">16.0dip</dimen>
+    <dimen name="space_14">14.0dip</dimen>
+    <dimen name="space_12">12.0dip</dimen>
+    <dimen name="space_10">10.0dip</dimen>
+    <dimen name="space_8">8.0dip</dimen>
+    <dimen name="fab_margin">16dp</dimen>
+    <!-- Default screen margins, per the Android Design guidelines. -->
+
+    <dimen name="navigation_size">18sp</dimen>
+    <dimen name="first_title_size">16sp</dimen>
+    <dimen name="second_title_size">14sp</dimen>
+    <dimen name="least_title_size">12sp</dimen>
+    <dimen name="item_height">45dp</dimen>
+
+
+    <dimen name="title_height">44dp</dimen>
+    <dimen name="tab_bottom_shadow">54dip</dimen>
+
+    <dimen name="indicator_right_padding">10dp</dimen>
+    <dimen name="indicator_internal_padding">4dp</dimen>
+    <dimen name="header_footer_left_right_padding">24dp</dimen>
+    <dimen name="header_footer_top_bottom_padding">12dp</dimen>
+
+    <dimen name="design_navigation_icon_size" tools:override="true">72dp</dimen>
+    <dimen name="design_navigation_icon_padding" tools:override="true">0dp</dimen>
+    <dimen name="text_margin">16dp</dimen>
+    <!--<dimen name="design_navigation_separator_vertical_padding" tools:override="true">0dp</dimen>-->
+
+</resources>

@@ -1,0 +1,25 @@
+include ':app'
+rootProject.name='NADKShow'
+
+include ':nadk-applog'
+project(':nadk-applog').projectDir= new File(settingsDir, '../NADK_Develop_Module/NADKClient/applog/android/studio/nadk-applog')
+
+include ':nadk-reliant'
+project(':nadk-reliant').projectDir= new File(settingsDir, '../NADK_Develop_Module/NADKBase/NADKReliant/android/studio/nadk-reliant')
+
+include ':nadk-webrtc'
+project(':nadk-webrtc').projectDir= new File(settingsDir, '../NADK_Develop_Module/NADKWebrtc/NADKWebrtc/android/studio/nadk-webrtc')
+include ':nadk-webrtc-assist'
+project(':nadk-webrtc-assist').projectDir= new File(settingsDir, '../NADK_Develop_Module/NADKWebrtc/NADKWebrtcAssist/android/studio/nadk-webrtc-assist')
+
+include ':nadk-streaming'
+project(':nadk-streaming').projectDir= new File(settingsDir, '../NADK_Develop_Module/NADKStreaming/NADKStreaming/StreamingAPI/android/studio/nadk-streaming')
+include ':nadk-streaming-render'
+project(':nadk-streaming-render').projectDir= new File(settingsDir, '../NADK_Develop_Module/NADKStreaming/NADKStreamingRender/RenderAPI/android/studio/nadk-streaming-render')
+include ':nadk-streaming-producer'
+project(':nadk-streaming-producer').projectDir= new File(settingsDir, '../NADK_Develop_Module/NADKRoutines/NADKStreamingProducer/android/studio/nadk-streaming-producer')
+//include ':nadk-streaming-routines'
+//project(':nadk-streaming-routines').projectDir= new File(settingsDir, '../../NADKStreamingRoutines/android/studio/nadk-streaming-routines')
+
+//include ':nadk-native-library'
+//project(':nadk-native-library').projectDir= new File(settingsDir, '../../../NADKAndroidBuildModule/nadk-native-library')

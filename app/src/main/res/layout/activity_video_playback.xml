@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <RelativeLayout
+            android:id="@+id/toolbar_layout"
+            android:layout_width="fill_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/colorPrimaryDark"
+            >
+            <ImageButton
+                android:id="@+id/back_btn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:background="@color/transparent"
+                android:src="@drawable/nav_btn_back" />
+
+            <TextView
+                style="@style/navigationTextviewPrimary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:text="VideoPlayback" />
+
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/video_view_layout"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:background="@color/black"
+            android:layout_below="@+id/toolbar_layout"
+            android:layout_alignWithParentIfMissing="true">
+
+
+            <com.google.android.exoplayer2.ui.PlayerView
+                android:id="@+id/player_view"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_centerInParent="true"
+                app:controller_layout_id="@layout/my_exo_player_control_view" />
+
+
+        </RelativeLayout>
+        <RelativeLayout
+            android:id="@+id/play_info_layout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_below="@+id/video_view_layout">
+
+            <LinearLayout
+                android:id="@+id/play_protocol_layout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="30dp"
+                android:orientation="vertical">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginRight="8dp"
+                    android:layout_marginLeft="8dp"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="16dp"
+                    android:weightSum="6"
+                    >
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="2"
+                        android:layout_gravity="center_vertical"
+                        android:text="Protocol:"
+                        android:textSize="@dimen/first_title_size"
+                        android:textColor="@color/primary_text"
+                        />
+                    <RelativeLayout
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_weight="4"
+                        android:layout_gravity="center_vertical"
+                        android:layout_marginLeft="4dp"
+                        android:background="@drawable/shape_edit_bg">
+
+                        <Spinner
+                            android:id="@+id/protocol_spinner"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:layout_gravity="center_vertical"
+                            android:textColor="@color/secondary_text"
+                            android:textSize="@dimen/second_title_size"
+                            />
+
+                    </RelativeLayout>
+
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginRight="8dp"
+                    android:layout_marginLeft="8dp"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="16dp"
+                    android:layout_weight="6">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="2"
+                        android:layout_gravity="center_vertical"
+                        android:textSize="@dimen/first_title_size"
+                        android:textColor="@color/primary_text"
+                        android:text="StartTime:"/>
+                    <TextView
+                        style="@style/secondTextview"
+                        android:id="@+id/start_time_txt"
+                        android:background="@drawable/shape_edit_bg"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_weight="4"
+                        android:layout_marginLeft="6dp"
+                        android:maxLength="60"
+                        android:maxLines="1"
+                        android:inputType="text"
+                        android:textColor="@color/secondary_text"
+                        android:layout_centerVertical="true"
+                        android:textSize="@dimen/first_title_size"
+                        android:text=""/>
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginRight="8dp"
+                    android:layout_marginLeft="8dp"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="16dp"
+                    android:layout_weight="6">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="2"
+                        android:layout_gravity="center_vertical"
+                        android:textSize="@dimen/first_title_size"
+                        android:textColor="@color/primary_text"
+                        android:text="EndTime:"/>
+                    <TextView
+                        style="@style/secondTextview"
+                        android:id="@+id/end_time_txt"
+                        android:background="@drawable/shape_edit_bg"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_weight="4"
+                        android:layout_marginLeft="6dp"
+                        android:maxLength="60"
+                        android:maxLines="1"
+                        android:inputType="text"
+                        android:textColor="@color/secondary_text"
+                        android:layout_gravity="center"
+                        android:textSize="@dimen/first_title_size"
+                        android:text=""/>
+
+                </LinearLayout>
+
+
+            </LinearLayout>
+
+
+
+
+
+
+            <Button
+                android:id="@+id/play_btn"
+                android:layout_width="match_parent"
+                android:layout_alignParentBottom="false"
+                android:layout_below="@+id/play_protocol_layout"
+                android:layout_marginTop="50dp"
+                android:layout_marginBottom="50dp"
+                android:layout_marginRight="16dp"
+                android:layout_marginLeft="16dp"
+                android:text="Start Playback"
+                style="@style/customButtonPrimary"/>
+
+
+        </RelativeLayout>
+    </RelativeLayout>
+
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

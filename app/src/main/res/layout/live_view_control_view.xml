@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_height="match_parent"
+    android:layout_width="match_parent"
+    android:background="@color/full_transparent"
+    tools:targetApi="28">
+
+    <RelativeLayout
+        android:id="@+id/exo_top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/exo_styled_bottom_bar_height">
+
+        <ImageView
+            android:id="@+id/exo_top_bar_back"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:src="@drawable/nav_btn_back" />
+
+        <TextView
+            android:id="@+id/exo_top_bar_title"
+            style="@style/navigationTextviewPrimary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="LiveView"/>
+
+    </RelativeLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <ImageButton android:id="@id/exo_prev"
+            style="@style/ExoMediaButton.Previous"/>
+
+        <ImageButton android:id="@id/exo_rew"
+            style="@style/ExoMediaButton.Rewind"/>
+
+        <ImageButton android:id="@id/exo_play"
+            style="@style/ExoMediaButton.Play"/>
+
+        <ImageButton android:id="@id/exo_pause"
+            style="@style/ExoMediaButton.Pause"/>
+
+        <ImageButton android:id="@id/exo_ffwd"
+            style="@style/ExoMediaButton.FastForward"/>
+
+        <ImageButton android:id="@id/exo_next"
+            style="@style/ExoMediaButton.Next"/>
+
+    </LinearLayout>
+<!--    <LinearLayout-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:layout_centerInParent="true"-->
+<!--        android:orientation="horizontal"-->
+<!--        android:visibility="gone">-->
+
+<!--        <ImageButton android:id="@id/exo_prev"-->
+<!--            style="@style/ExoStyledControls.Button.Center.Previous"/>-->
+
+<!--        <ImageButton android:id="@id/exo_rew"-->
+<!--            style="@style/ExoStyledControls.Button.Center.RewWithAmount"/>-->
+
+<!--        <ImageButton android:id="@id/exo_play"-->
+<!--            style="@style/ExoStyledControls.Button.Center.PlayPause"/>-->
+
+<!--        <ImageButton android:id="@id/exo_pause"-->
+<!--            style="@style/ExoStyledControls.Button.Center.PlayPause"-->
+<!--            android:src="@drawable/exo_ic_pause_circle_filled"/>-->
+
+<!--        <ImageButton android:id="@id/exo_ffwd"-->
+<!--            style="@style/ExoStyledControls.Button.Center.FfwdWithAmount"/>-->
+
+<!--        <ImageButton android:id="@id/exo_next"-->
+<!--            style="@style/ExoStyledControls.Button.Center.Next"/>-->
+
+<!--    </LinearLayout>-->
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layoutDirection="ltr"
+        android:orientation="vertical">
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/exo_styled_bottom_bar_height"
+            android:layout_marginTop="4dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageButton android:id="@id/exo_fullscreen"
+                style="@style/ExoStyledControls.Button.Bottom.FullScreen"
+                android:layout_alignParentRight="true"
+
+                />
+
+        </RelativeLayout>
+
+    </LinearLayout>
+
+</RelativeLayout>

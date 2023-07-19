@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.icatchtek.nadk.show.MainActivity">
+
+    <RelativeLayout
+        android:id="@+id/toolbar_layout"
+        android:layout_width="fill_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/colorPrimaryDark"
+        >
+        <ImageButton
+            android:id="@+id/back_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:background="@color/transparent"
+            android:src="@drawable/nav_btn_back" />
+
+        <TextView
+            style="@style/navigationTextviewPrimary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="LiveView" />
+
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:id="@+id/live_view_layout"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:background="@color/black"
+        android:layout_below="@+id/toolbar_layout"
+        android:layout_alignWithParentIfMissing="true">
+
+        <SurfaceView
+            android:id="@+id/surfaceView1"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            />
+
+        <include layout="@layout/live_view_control_view"
+            android:id="@+id/live_view_control_layout"
+            android:visibility="visible"/>
+
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:id="@+id/control_btn_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@+id/live_view_layout">
+
+        <LinearLayout
+            android:id="@+id/linearLayout2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp"
+            android:visibility="gone">
+            <RadioGroup
+                android:id="@+id/radioGroup"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:gravity="center">
+                <RadioButton
+                    android:id="@+id/radio_master"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="master"
+                    android:textSize="25sp"
+                    android:checked="false"/>
+
+                <RadioButton
+                    android:id="@+id/radio_viewer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="viewer"
+                    android:layout_marginLeft="100dp"
+                    android:textSize="25sp"
+                    android:checked="true"/>
+            </RadioGroup>
+        </LinearLayout>
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginTop="16dp"
+            android:layout_below="@+id/linearLayout2">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                >
+                <Button
+                    android:id="@+id/btnPermission"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Permission"
+                    android:textAllCaps="false"
+                    android:layout_margin="16dp"
+                    style="@style/customButtonPrimary"
+                    android:visibility="gone"/>
+                <Button
+                    android:id="@+id/btnPrepareWebrtc"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Prepare Webrtc"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="16dp"
+                    android:layout_marginRight="16dp"
+                    android:layout_marginLeft="16dp"
+                    style="@style/customButtonPrimary"
+                    android:textAllCaps="false"
+                    android:visibility="gone"/>
+
+                <Button
+                    android:id="@+id/btnDestroyWebrtc"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Destroy Webrtc"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="16dp"
+                    android:layout_marginRight="16dp"
+                    android:layout_marginLeft="16dp"
+                    style="@style/customButtonPrimary"
+                    android:textAllCaps="false"
+                    android:visibility="gone"/>
+
+                <Button
+                    android:id="@+id/webrtc_btn"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Prepare Webrtc"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="16dp"
+                    android:layout_marginRight="16dp"
+                    android:layout_marginLeft="16dp"
+                    style="@style/customButtonPrimary"
+                    android:textAllCaps="false"
+                    android:visibility="visible"/>
+
+                <Button
+                    android:id="@+id/talk_btn"
+                    android:layout_width="fill_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Enable Talk"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="16dp"
+                    android:layout_marginRight="16dp"
+                    android:layout_marginLeft="16dp"
+                    style="@style/customButtonPrimary"
+                    android:textAllCaps="false"
+                    android:visibility="visible"/>
+
+
+            </LinearLayout>
+
+        </RelativeLayout>
+
+
+    </RelativeLayout>
+
+
+
+
+</RelativeLayout>

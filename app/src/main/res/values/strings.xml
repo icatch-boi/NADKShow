@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">NADK Show</string>
+    <string name="prepareService">Prepare Service</string>
+    <string name="destroyService">Destroy Service</string>
+</resources>
