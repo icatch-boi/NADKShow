@@ -65,6 +65,14 @@ public class NADKConfig {
         return authorizationConfig.getTinyaiRtcAuthorization();
     }
 
+    public void setLanModeAuthorization(NADKAuthorization  auth) {
+        authorizationConfig.setLanModeAuthorization(auth);
+    }
+
+    public NADKAuthorization getLanModeAuthorization() {
+        return authorizationConfig.getLanModeAuthorization();
+    }
+
     public void setSrtp(boolean srtp)
     {
         authorizationConfig.setSrtp(srtp);
@@ -85,21 +93,27 @@ public class NADKConfig {
 
     public NADKWebrtcAuthentication createNADKWebrtcAuthentication(boolean isMaster, int signalingType) {
         NADKWebrtcAuthentication authentication = authorizationConfig.createWebrtcAuthentication(isMaster, signalingType);
-        String cafile = AWS_CA;
-        if (signalingType == NADKSignalingType.NADK_SIGNALING_TYPE_AIOT_WSS) {
-            cafile = TINYAI_CA;
+        String cafile = TINYAI_CA;
+        if (signalingType == NADKSignalingType.NADK_SIGNALING_TYPE_KVS) {
+            cafile = AWS_CA;
         }
         authentication.setCertFile(NADK_CA_FILE_PATH + "/" + cafile);
         return authentication;
     }
 
-    public NADKWebrtcSetupInfo createNADKWebrtcSetupInfo(boolean isMaster) {
+    public NADKWebrtcSetupInfo createNADKWebrtcSetupInfo(boolean isMaster, int signalingType) {
         NADKWebrtcSetupInfo setupInfo = new NADKWebrtcSetupInfo(isMaster);
         setupInfo.setTrickleIce(true);
         setupInfo.setUseTurn(true);
         setupInfo.setMaxLatency(500);
-        setupInfo.setSrtp(getSrtp());
-        setupInfo.setRtcpTwcc(getRtcpTwcc());
+
+        if (signalingType == NADKSignalingType.NADK_SIGNALING_TYPE_BASE_TCP) {
+            setupInfo.setSrtp(false);
+            setupInfo.setRtcpTwcc(false);
+        } else {
+            setupInfo.setSrtp(getSrtp());
+            setupInfo.setRtcpTwcc(getRtcpTwcc());
+        }
         return setupInfo;
     }
 

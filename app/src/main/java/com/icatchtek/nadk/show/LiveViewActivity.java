@@ -45,6 +45,7 @@ import com.icatchtek.nadk.show.assist.WebrtcLogStatusListener;
 import com.icatchtek.nadk.show.utils.NADKConfig;
 import com.icatchtek.nadk.show.utils.NADKShowLog;
 import com.icatchtek.nadk.show.utils.NADKWebRtcAudioRecord;
+import com.icatchtek.nadk.show.utils.NetworkUtils;
 import com.icatchtek.nadk.streaming.NADKStreamingClient;
 import com.icatchtek.nadk.streaming.render.NADKStreamingRender;
 import com.icatchtek.nadk.streaming.NADKStreaming;
@@ -172,7 +173,7 @@ public class LiveViewActivity extends BaseWebrtcActivity
         signalingType = intent.getIntExtra("signalingType", NADKSignalingType.NADK_SIGNALING_TYPE_KVS);
 
         AppLog.i("LiveView", "Flow, using APP IP address");
-        List<NADKNetAddress> localAddresses = getNetworkAddress();
+        List<NADKNetAddress> localAddresses = NetworkUtils.getNetworkAddress();
         this.streamParameter = new NADKWebrtcStreamParameter(
                 new NADKAudioParameter(), new NADKVideoParameter(), localAddresses);
 
@@ -180,7 +181,7 @@ public class LiveViewActivity extends BaseWebrtcActivity
         {
             AppLog.i("LiveView", "Flow, createWebrtcStreaming start");
             /* create webrtc */
-            this.webrtc = NADKWebrtc.create();
+            this.webrtc = NADKWebrtc.create(this.masterRole);
 
             /* create streaming based on webrtc */
             this.streaming = NADKStreamingAssist.createWebrtcStreaming(this.webrtc);
@@ -414,7 +415,7 @@ public class LiveViewActivity extends BaseWebrtcActivity
             /* prepare webrtc client*/
 
             AppLog.i("LiveView", "Flow, getWebRtcServerInfo start");
-            NADKWebrtcSetupInfo setupInfo = NADKConfig.getInstance().createNADKWebrtcSetupInfo(this.masterRole);
+            NADKWebrtcSetupInfo setupInfo = NADKConfig.getInstance().createNADKWebrtcSetupInfo(this.masterRole, signalingType);
             /* create webrtc authentication */
             NADKWebrtcAuthentication authentication = NADKConfig.getInstance().createNADKWebrtcAuthentication(this.masterRole, signalingType);
             if (authentication == null) {
@@ -425,8 +426,7 @@ public class LiveViewActivity extends BaseWebrtcActivity
 
             AppLog.i("LiveView", "Flow, startWebrtcStreaming start");
             /* prepare the webrtc client, connect to the signaling */
-            this.webrtc.prepareWebrtc(
-                    this.masterRole, setupInfo, authentication, this.streamParameter);
+            this.webrtc.prepareWebrtc(setupInfo, authentication, this.streamParameter);
             AppLog.i("LiveView", "Flow, startWebrtcStreaming end");
         }
         catch(NADKException ex) {
@@ -723,42 +723,6 @@ public class LiveViewActivity extends BaseWebrtcActivity
         }
     }
 
-    public List<NADKNetAddress> getNetworkAddress()
-    {
-        List<NADKNetAddress> netAddresses = new LinkedList<>();
-
-        try {
-            List<NetworkInterface> networkInterfaces = Collections.list(NetworkInterface.getNetworkInterfaces());
-            for (NetworkInterface networkInterface : networkInterfaces) {
-                AppLog.i("ipAddress", "info: " + networkInterface.getName());
-                if (!networkInterface.getName().contains("wlan")) {
-                    continue;
-                }
-
-                AppLog.i("ipAddress", "found valid wlan interface: " + networkInterface.getName());
-                List<InetAddress> addresses = Collections.list(networkInterface.getInetAddresses());
-                for (InetAddress address : addresses) {
-                    if (address instanceof Inet4Address) {
-                        AppLog.i("ipAddress", "valid inet4 address: " + address.getHostAddress());
-                        NADKNetAddress netAddress = new NADKNetAddress(true, address.getHostAddress());
-                        netAddresses.add(netAddress);
-                    }
-                    if (address instanceof Inet6Address) {
-                        String hostAddr = address.getHostAddress();
-                        if (hostAddr.startsWith("fe80")) {
-                            continue;
-                        }
-                        AppLog.i("ipAddress", "valid inet6 address: " + address.getHostAddress());
-                        NADKNetAddress netAddress = new NADKNetAddress(false, address.getHostAddress());
-                        netAddresses.add(netAddress);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            AppLog.e("getIPAddress", e.toString());
-        }
-        return netAddresses;
-    }
 
     public void setPvLayout(int requestedOrientation) {
         //竖屏

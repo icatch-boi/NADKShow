@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <RelativeLayout
+            android:id="@+id/toolbar_layout"
+            android:layout_width="fill_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/colorPrimaryDark"
+            >
+            <ImageButton
+                android:id="@+id/back_btn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:background="@color/transparent"
+                android:src="@drawable/nav_btn_back" />
+
+            <TextView
+                style="@style/navigationTextviewPrimary"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:text="Playback" />
+
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/remote_connect_status_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/divider"
+            android:layout_below="@+id/toolbar_layout"
+            android:orientation="horizontal"
+            android:padding="8dp"
+            android:visibility="visible">
+
+            <TextView
+                android:id="@+id/remote_connect_status_disable"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:padding="8dp"
+                android:layout_alignParentLeft="true"
+                android:background="@drawable/ic_clear_black_24dp"
+                android:layout_centerVertical="true"/>
+
+            <LinearLayout
+                android:id="@+id/remote_connect_status_info_layout"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:layout_centerHorizontal="true">
+                <ProgressBar
+                    android:id="@+id/remote_connect_status_progress_bar"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginLeft="8dp"
+                    android:indeterminateDrawable="@drawable/rotate_progressbar"
+                    />
+
+                <ImageView
+                    android:id="@+id/remote_connect_status_imv"
+                    android:layout_width="14dp"
+                    android:layout_height="14dp"
+                    android:layout_gravity="center"
+                    android:src="@mipmap/ic_warning_24dp"
+                    android:visibility="gone"/>
+
+                <TextView
+                    android:id="@+id/remote_connect_status_txv"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:layout_marginLeft="4dp"
+                    android:layout_marginRight="4dp"
+                    android:text="connecting"
+                    android:textColor="@color/secondary_text"
+                    android:textSize="@dimen/least_title_size" />
+
+                <TextView
+                    android:id="@+id/remote_connect_reconnect_txv"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:layout_marginLeft="4dp"
+                    android:layout_marginRight="4dp"
+                    android:text="reconnect"
+                    android:textColor="@color/secondary_text"
+                    android:textSize="@dimen/least_title_size"
+                    android:visibility="visible"
+                    />
+
+            </LinearLayout>
+
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/video_view_layout"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:background="@color/black"
+            android:layout_below="@+id/remote_connect_status_layout"
+            android:layout_alignWithParentIfMissing="true">
+
+
+            <com.google.android.exoplayer2.ui.PlayerView
+                android:id="@+id/player_view"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_centerInParent="true"
+                app:controller_layout_id="@layout/my_exo_player_control_view" />
+
+
+        </RelativeLayout>
+        <RelativeLayout
+            android:id="@+id/play_info_layout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginTop="16dp"
+            android:layout_below="@+id/video_view_layout">
+
+            <com.tinyai.libmediacomponent.components.filelist.FileListView2
+                android:id="@+id/file_list_view"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:enable_download="true"
+                app:refresh_mode="BOTH">
+            </com.tinyai.libmediacomponent.components.filelist.FileListView2>
+
+
+        </RelativeLayout>
+    </RelativeLayout>
+
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

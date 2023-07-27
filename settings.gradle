@@ -21,5 +21,8 @@ project(':nadk-streaming-producer').projectDir= new File(settingsDir, '../NADK_D
 //include ':nadk-streaming-routines'
 //project(':nadk-streaming-routines').projectDir= new File(settingsDir, '../../NADKStreamingRoutines/android/studio/nadk-streaming-routines')
 
+include ':nadk-playback'
+project(':nadk-playback').projectDir= new File(settingsDir, '../NADK_Develop_Module/NADKPlayback/NADKPlayback/android/studio/nadk-playback')
+
 //include ':nadk-native-library'
 //project(':nadk-native-library').projectDir= new File(settingsDir, '../../../NADKAndroidBuildModule/nadk-native-library')

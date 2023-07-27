@@ -123,6 +123,7 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/region_layout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginRight="8dp"
@@ -186,6 +187,7 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/accesskey_layout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginRight="8dp"
@@ -217,6 +219,7 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/secretkey_layout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginRight="8dp"

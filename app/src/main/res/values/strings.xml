@@ -2,4 +2,9 @@
     <string name="app_name">NADK Show</string>
     <string name="prepareService">Prepare Service</string>
     <string name="destroyService">Destroy Service</string>
+    <string name="text_disconnected">Disconnected</string>
+    <string name="text_reconnect">Reconnect</string>
+    <string name="text_connected">Connected</string>
+    <string name="text_connecting">Connecting...</string>
+    <string name="text_downloading">Downloading...</string>
 </resources>

@@ -98,6 +98,24 @@
                 </Button>
             </RelativeLayout>
 
+            <RelativeLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                android:layout_marginBottom="32dp"
+                >
+
+                <Button
+                    android:id="@+id/lan_mode_btn"
+                    style="@style/customButtonPrimary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_centerInParent="true"
+                    android:layout_marginStart="48dp"
+                    android:layout_marginEnd="48dp"
+                    android:text="LAN_MODE"></Button>
+            </RelativeLayout>
+
 
         </LinearLayout>
 

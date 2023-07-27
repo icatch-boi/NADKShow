@@ -72,8 +72,8 @@ public abstract class BaseWebrtcActivity extends BaseSurfaceActivity
 
         logger.setModule(NADKLogModule.NADK_LOG_MODULE_COMMON, true);
         logger.setModuleLevel(NADKLogModule.NADK_LOG_MODULE_COMMON, NADKLogLevel.NADK_LOG_LEVEL_VERB);
-        logger.setModule(NADKLogModule.NADK_LOG_MODULE_NADK, true);
-        logger.setModuleLevel(NADKLogModule.NADK_LOG_MODULE_NADK, NADKLogLevel.NADK_LOG_LEVEL_VERB);
+        logger.setModule(NADKLogModule.NADK_LOG_MODULE_PLAYBACK, true);
+        logger.setModuleLevel(NADKLogModule.NADK_LOG_MODULE_PLAYBACK, NADKLogLevel.NADK_LOG_LEVEL_VERB);
         logger.setModule(NADKLogModule.NADK_LOG_MODULE_NADK_P2P, true);
         logger.setModuleLevel(NADKLogModule.NADK_LOG_MODULE_NADK_P2P, NADKLogLevel.NADK_LOG_LEVEL_VERB);
 

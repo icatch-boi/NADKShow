@@ -23,17 +23,20 @@ import java.util.List;
 
 public class ConfigActivity extends AppCompatActivity {
     private static final String TAG = ConfigActivity.class.getSimpleName();
-    private static final String[] supportOptions = {"AWS_KVS_WEBRTC", "AWS_KVS_STREAM", "TINYAI_RTC", "DEBUG"};
+    private static final String[] supportOptions = {"AWS_KVS_WEBRTC", "AWS_KVS_STREAM", "TINYAI_RTC", "LAN_MODE", "DEBUG"};
     private static final String[] booleanOptions = {"true", "false"};
     private ImageButton back_btn;
     private Spinner option_spinner;
     private LinearLayout auth_info_layout;
     private EditText channelname_edt;
     private EditText region_edt;
+    private LinearLayout region_layout;
     private EditText endpoint_edt;
-    private LinearLayout endpointlayout;
+    private LinearLayout endpoint_layout;
     private EditText accesskey_edt;
+    private LinearLayout accesskey_layout;
     private EditText secretkey_edt;
+    private LinearLayout secretkey_layout;
     private EditText clientid_edt;
     private LinearLayout clientid_layout;
     private LinearLayout debug_info_layout;
@@ -57,10 +60,13 @@ public class ConfigActivity extends AppCompatActivity {
         auth_info_layout = findViewById(R.id.auth_info_layout);
         channelname_edt = findViewById(R.id.channelname_edt);
         region_edt = findViewById(R.id.region_edt);
+        region_layout = findViewById(R.id.region_layout);
         endpoint_edt = findViewById(R.id.endpoint_edt);
-        endpointlayout = findViewById(R.id.endpoint_layout);
+        endpoint_layout = findViewById(R.id.endpoint_layout);
         accesskey_edt = findViewById(R.id.accesskey_edt);
+        accesskey_layout = findViewById(R.id.accesskey_layout);
         secretkey_edt = findViewById(R.id.secretkey_edt);
+        secretkey_layout = findViewById(R.id.secretkey_layout);
         clientid_edt = findViewById(R.id.clientid_edt);
         clientid_layout = findViewById(R.id.clientid_layout);
         debug_info_layout = findViewById(R.id.debug_info_layout);
@@ -184,7 +190,7 @@ public class ConfigActivity extends AppCompatActivity {
     }
 
     private void updateCurrentOption() {
-        if (currentOptionIndex == 3) {
+        if (currentOptionIndex == 4) {
             srtp = NADKConfig.getInstance().getSrtp();
             if (srtp) {
                 srtp_spinner.setSelection(0);
@@ -204,16 +210,32 @@ public class ConfigActivity extends AppCompatActivity {
             NADKAuthorization authorization = null;
             if (currentOptionIndex == 0) {
                 authorization = NADKConfig.getInstance().getAWSKVSWebrtcAuthorization();
-                endpointlayout.setVisibility(View.GONE);
+                endpoint_layout.setVisibility(View.GONE);
                 clientid_layout.setVisibility(View.VISIBLE);
+                region_layout.setVisibility(View.VISIBLE);
+                accesskey_layout.setVisibility(View.VISIBLE);
+                secretkey_layout.setVisibility(View.VISIBLE);
             } else if (currentOptionIndex == 1) {
                 authorization = NADKConfig.getInstance().getAWSKVSStreamAuthorization();
-                endpointlayout.setVisibility(View.GONE);
+                endpoint_layout.setVisibility(View.GONE);
                 clientid_layout.setVisibility(View.GONE);
+                region_layout.setVisibility(View.VISIBLE);
+                accesskey_layout.setVisibility(View.VISIBLE);
+                secretkey_layout.setVisibility(View.VISIBLE);
             } else if (currentOptionIndex == 2) {
                 authorization = NADKConfig.getInstance().getTinyaiRtcAuthorization();
-                endpointlayout.setVisibility(View.VISIBLE);
+                endpoint_layout.setVisibility(View.VISIBLE);
                 clientid_layout.setVisibility(View.VISIBLE);
+                region_layout.setVisibility(View.VISIBLE);
+                accesskey_layout.setVisibility(View.VISIBLE);
+                secretkey_layout.setVisibility(View.VISIBLE);
+            } else if (currentOptionIndex == 3) {
+                authorization = NADKConfig.getInstance().getLanModeAuthorization();
+                endpoint_layout.setVisibility(View.VISIBLE);
+                clientid_layout.setVisibility(View.VISIBLE);
+                region_layout.setVisibility(View.GONE);
+                accesskey_layout.setVisibility(View.GONE);
+                secretkey_layout.setVisibility(View.GONE);
             }
 
             String channelName = authorization.getChannelName();
@@ -240,7 +262,7 @@ public class ConfigActivity extends AppCompatActivity {
 
     private void saveCurrentOption() {
 
-        if (currentOptionIndex == 3) {
+        if (currentOptionIndex == 4) {
             NADKConfig.getInstance().setSrtp(srtp);
             NADKConfig.getInstance().setRtcpTwcc(rtcptwcc);
         } else {
@@ -258,6 +280,8 @@ public class ConfigActivity extends AppCompatActivity {
                 NADKConfig.getInstance().setAWSKVSStreamAuthorization(authorization);
             } else if (currentOptionIndex == 2) {
                 NADKConfig.getInstance().setTinyaiRtcAuthorization(authorization);
+            } else if (currentOptionIndex == 3) {
+                NADKConfig.getInstance().setLanModeAuthorization(authorization);
             }
         }
 

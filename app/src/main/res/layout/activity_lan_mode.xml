@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.icatchtek.nadk.show.MainActivity">
+
+    <RelativeLayout
+        android:id="@+id/toolbar_layout"
+        android:layout_width="fill_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/colorPrimaryDark">
+
+        <ImageButton
+            android:id="@+id/back_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:background="@color/transparent"
+            android:src="@drawable/nav_btn_back" />
+
+        <TextView
+            style="@style/navigationTextviewPrimary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="LAN Mode"
+            />
+
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@+id/toolbar_layout">
+
+        <LinearLayout
+            android:id="@+id/auth_info_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="30dp"
+            android:orientation="vertical"
+            android:visibility="visible">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginRight="8dp"
+                android:layout_marginLeft="8dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="16dp"
+                android:layout_weight="4">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_gravity="center_vertical"
+                    android:textSize="@dimen/second_title_size"
+                    android:textColor="@color/primary_text"
+                    android:text="channel:"/>
+                <EditText
+                    android:id="@+id/channelname_edt"
+                    android:background="@drawable/shape_edit_bg"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="3"
+                    android:layout_marginLeft="6dp"
+                    android:maxLength="60"
+                    android:maxLines="1"
+                    android:inputType="text"
+                    android:textColor="@color/secondary_text"
+                    android:textSize="@dimen/second_title_size"
+                    android:text=""/>
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/endpoint_layout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginRight="8dp"
+                android:layout_marginLeft="8dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="16dp"
+                android:layout_weight="4">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_gravity="center_vertical"
+                    android:textSize="@dimen/second_title_size"
+                    android:textColor="@color/primary_text"
+                    android:text="endpoint:"/>
+                <EditText
+                    android:id="@+id/endpoint_edt"
+                    android:background="@drawable/shape_edit_bg"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="3"
+                    android:layout_marginLeft="6dp"
+                    android:maxLength="60"
+                    android:maxLines="1"
+                    android:inputType="text"
+                    android:textColor="@color/secondary_text"
+                    android:textSize="@dimen/second_title_size"
+                    android:hint="tcp://ip:8007"
+                    android:textColorHint="@color/guide_pages_hint"
+                    android:text=""/>
+
+            </LinearLayout>
+
+
+            <LinearLayout
+                android:id="@+id/clientid_layout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginRight="8dp"
+                android:layout_marginLeft="8dp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="16dp"
+                android:layout_weight="4">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_gravity="center_vertical"
+                    android:textSize="@dimen/second_title_size"
+                    android:textColor="@color/primary_text"
+                    android:text="clientid:"/>
+                <EditText
+                    android:id="@+id/clientid_edt"
+                    android:background="@drawable/shape_edit_bg"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="3"
+                    android:layout_marginLeft="6dp"
+                    android:maxLength="60"
+                    android:maxLines="1"
+                    android:inputType="text"
+                    android:textColor="@color/secondary_text"
+                    android:textSize="@dimen/second_title_size"
+                    android:text=""/>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="32dp"
+            android:layout_marginBottom="32dp"
+            android:layout_below="@+id/auth_info_layout"
+
+            >
+            <RelativeLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                android:layout_marginBottom="16dp"
+                >
+
+                <Button
+                    android:id="@+id/live_view_btn"
+                    style="@style/customButtonPrimary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_centerInParent="true"
+                    android:layout_marginStart="48dp"
+                    android:layout_marginEnd="48dp"
+                    android:text="LIVE_VIEW" />
+            </RelativeLayout>
+
+
+            <RelativeLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                android:layout_marginBottom="32dp"
+                >
+
+                <Button
+                    android:id="@+id/local_playback_btn"
+                    style="@style/customButtonPrimary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_centerInParent="true"
+                    android:layout_marginStart="48dp"
+                    android:layout_marginEnd="48dp"
+                    android:text="PLAYBACK" />
+            </RelativeLayout>
+
+
+
+
+        </LinearLayout>
+
+    </RelativeLayout>
+
+
+
+</RelativeLayout>

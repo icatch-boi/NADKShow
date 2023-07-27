@@ -14,9 +14,12 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
+import com.icatch.smarthome.am.aws.AmazonAwsUtil;
 import com.icatchtek.baseutil.file.FileUtil;
+import com.icatchtek.baseutil.imageloader.ImageLoaderConfig;
 import com.icatchtek.baseutil.log.AppLog;
 import com.icatchtek.baseutil.permission.PermissionTools;
+import com.icatchtek.nadk.show.imageloader.CustomImageDownloader;
 import com.icatchtek.nadk.show.utils.NADKConfig;
 import com.icatchtek.nadk.show.utils.NADKShowLog;
 import com.icatchtek.nadk.reliant.NADKException;
@@ -36,6 +39,7 @@ public class MainActivity extends AppCompatActivity {
     private Button aws_kvs_webrtc_btn;
     private Button aws_kvs_stream_btn;
     private Button tinyai_rtc_btn;
+    private Button lan_mode_btn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
         aws_kvs_webrtc_btn = findViewById(R.id.aws_kvs_webrtc_btn);
         aws_kvs_stream_btn = findViewById(R.id.aws_kvs_stream_btn);
         tinyai_rtc_btn = findViewById(R.id.tinyai_rtc_btn);
+        lan_mode_btn = findViewById(R.id.lan_mode_btn);
 
         setting_btn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -80,6 +85,15 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 Intent intent = new Intent(MainActivity.this, LiveViewActivity.class);
                 intent.putExtra("signalingType", NADKSignalingType.NADK_SIGNALING_TYPE_AIOT_WSS);
+                startActivity(intent);
+
+            }
+        });
+
+        lan_mode_btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, LanModeActivity.class);
                 startActivity(intent);
 
             }
@@ -133,7 +147,7 @@ public class MainActivity extends AppCompatActivity {
     public void init() {
         AppLog.enableAppLog(this, new NADKShowLog());
         copyCAFile(this);
-        NADKWebrtc webrtc = NADKWebrtc.create();
+        NADKWebrtc webrtc = NADKWebrtc.create(false);
         try {
             webrtc.getEventHandler();
         } catch (NADKException e) {
