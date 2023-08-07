@@ -77,6 +77,7 @@ public class NADKStreamingClientService
         {
             try {
                 this.streamingRender.startStreaming(this.streamingClient);
+                this.streamingRender.prepareRender();
             } catch (NADKException ex) {
                 ex.printStackTrace();
             }
@@ -98,12 +99,12 @@ public class NADKStreamingClientService
         }
     }
 
-    public void setFormatChanged(
+    public void streamingEnabled(
             NADKAudioParameter audioParameter,
             NADKVideoParameter videoParameter)
     {
         logger.writeCommonLogI("StreamingClient:" + this.clientID, String.format(Locale.getDefault(),
-                "format changed, audio: %s, video: %s",
+                "streamingEnabled, audio: %s, video: %s",
                 audioParameter, videoParameter));
 
         if (audioParameter == null && videoParameter == null) {
@@ -112,20 +113,31 @@ public class NADKStreamingClientService
 
         if (audioParameter != null) {
             logger.writeCommonLogI("StreamingClient:" + this.clientID, String.format(Locale.getDefault(),
-                    "audio format changed, type: %d, frequency: %d, sampleBits: %d, sampleChannels: %d",
+                    "streamingEnabled audio format changed, type: %d, frequency: %d, sampleBits: %d, sampleChannels: %d",
                     audioParameter.getCodec(), audioParameter.getFrequency(),
                     audioParameter.getSampleBits(), audioParameter.getSampleChannels()));
         }
 
         if (audioParameter != null) {
             logger.writeCommonLogI("StreamingClient:" + this.clientID, String.format(Locale.getDefault(),
-                    "video format changed, type: %d, frameWidth: %d, frameHeight: %d",
+                    "streamingEnabled video format changed, type: %d, frameWidth: %d, frameHeight: %d",
                     videoParameter.getCodec(), videoParameter.getWidth(), videoParameter.getHeight()));
         }
 
         if (this.streamingRender != null) {
             try {
                 this.streamingRender.prepareRender();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+
+    public void streamingDisabled() {
+        logger.writeCommonLogI("StreamingClient:" + this.clientID, "streamingDisabled");
+        if (this.streamingRender != null) {
+            try {
+                this.streamingRender.destroyRender();
             } catch (Exception ex) {
                 ex.printStackTrace();
             }

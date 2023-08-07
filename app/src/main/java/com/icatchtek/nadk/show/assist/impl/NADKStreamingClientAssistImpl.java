@@ -138,7 +138,7 @@ public class NADKStreamingClientAssistImpl
         clientService.setDisconnected();
     }
 
-    public void formatChanged(
+    public void streamingEnabled(
             NADKStreamingClient streamingClient,
             NADKAudioParameter audioParameter, NADKVideoParameter videoParameter) throws NADKException {
         NADKStreamingClientService clientService = this.getClientService(streamingClient);
@@ -146,8 +146,19 @@ public class NADKStreamingClientAssistImpl
             throw new NADKException(NADKError.NADK_INVALID_ARG);
         }
 
-        logger.writeCommonLogI(LOG_TAG, String.format(Locale.getDefault(), "client[%s] format changed", streamingClient.getClientID()));
-        clientService.setFormatChanged(audioParameter, videoParameter);
+        logger.writeCommonLogI(LOG_TAG, String.format(Locale.getDefault(), "client[%s] streamingEnabled", streamingClient.getClientID()));
+        clientService.streamingEnabled(audioParameter, videoParameter);
+    }
+
+    public void streamingDisabled(NADKStreamingClient streamingClient)
+            throws NADKException {
+        NADKStreamingClientService clientService = this.getClientService(streamingClient);
+        if (clientService == null) {
+            throw new NADKException(NADKError.NADK_INVALID_ARG);
+        }
+
+        logger.writeCommonLogI(LOG_TAG, String.format(Locale.getDefault(), "client[%s] streamingDisabled", streamingClient.getClientID()));
+        clientService.streamingDisabled();
     }
 
     void prepareSenderFunc()

@@ -160,14 +160,14 @@ public class NADKShowLog implements Logger {
 
         NADKAppLog.setModule(NADKAppLogModule.NADK_LOG_MODULE_COMMON, true);
         NADKAppLog.setModuleLevel(NADKAppLogModule.NADK_LOG_MODULE_COMMON, NADKAppLogLevel.NADK_LOG_LEVEL_VERB);
-        NADKAppLog.setModule(NADKAppLogModule.NADK_LOG_MODULE_NADK, true);
-        NADKAppLog.setModuleLevel(NADKAppLogModule.NADK_LOG_MODULE_NADK, NADKAppLogLevel.NADK_LOG_LEVEL_VERB);
+        NADKAppLog.setModule(NADKAppLogModule.NADK_LOG_MODULE_PLAYBACK, true);
+        NADKAppLog.setModuleLevel(NADKAppLogModule.NADK_LOG_MODULE_PLAYBACK, NADKAppLogLevel.NADK_LOG_LEVEL_VERB);
         NADKAppLog.setModule(NADKAppLogModule.NADK_LOG_MODULE_NADK_P2P, true);
         NADKAppLog.setModuleLevel(NADKAppLogModule.NADK_LOG_MODULE_NADK_P2P, NADKAppLogLevel.NADK_LOG_LEVEL_VERB);
 
         NADKAppLog.setModule(NADKAppLogModule.NADK_LOG_MODULE_STREAM, true);
         NADKAppLog.setModuleLevel(NADKAppLogModule.NADK_LOG_MODULE_STREAM, NADKAppLogLevel.NADK_LOG_LEVEL_VERB);
-        NADKAppLog.setModule(NADKAppLogModule.NADK_LOG_MODULE_RENDER, true);
+        NADKAppLog.setModule(NADKAppLogModule.NADK_LOG_MODULE_RENDER, false);
         NADKAppLog.setModuleLevel(NADKAppLogModule.NADK_LOG_MODULE_RENDER, NADKAppLogLevel.NADK_LOG_LEVEL_VERB);
         NADKAppLog.setModule(NADKAppLogModule.NADK_LOG_MODULE_APP, true);
         NADKAppLog.setModuleLevel(NADKAppLogModule.NADK_LOG_MODULE_APP, NADKAppLogLevel.NADK_LOG_LEVEL_VERB);

@@ -70,14 +70,25 @@ public class NADKStreamingClientAssist implements NADKStreamingClientListener
         }
     }
 
-    public void formatChanged(
-            NADKStreamingClient streamingClient,
-            NADKAudioParameter audioParameter, NADKVideoParameter videoParameter) {
+    @Override
+    public void streamingEnabled(NADKStreamingClient streamingClient, NADKAudioParameter audioParameter, NADKVideoParameter videoParameter) {
         try {
             if (streamingClientListener != null) {
-                streamingClientListener.formatChanged(streamingClient, audioParameter, videoParameter);
+                streamingClientListener.streamingEnabled(streamingClient, audioParameter, videoParameter);
             }
-            this.clientAssistImpl.formatChanged(streamingClient, audioParameter, videoParameter);
+            this.clientAssistImpl.streamingEnabled(streamingClient, audioParameter, videoParameter);
+        } catch (NADKException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void streamingDisabled(NADKStreamingClient streamingClient) {
+        try {
+            if (streamingClientListener != null) {
+                streamingClientListener.streamingDisabled(streamingClient);
+            }
+            this.clientAssistImpl.streamingDisabled(streamingClient);
         } catch (NADKException e) {
             e.printStackTrace();
         }

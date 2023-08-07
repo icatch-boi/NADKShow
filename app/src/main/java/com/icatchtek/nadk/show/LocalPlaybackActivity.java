@@ -51,12 +51,14 @@ import com.icatchtek.nadk.playback.NADKPlayback;
 import com.icatchtek.nadk.playback.NADKPlaybackAssist;
 import com.icatchtek.nadk.playback.NADKPlaybackClient;
 import com.icatchtek.nadk.playback.NADKPlaybackClientListener;
-import com.icatchtek.nadk.playback.file.NADKFileTransferStatusListener;
+import com.icatchtek.nadk.playback.file.NADKFileTransferListener;
 import com.icatchtek.nadk.reliant.NADKException;
 import com.icatchtek.nadk.reliant.NADKNetAddress;
 import com.icatchtek.nadk.reliant.NADKSignalingType;
 import com.icatchtek.nadk.reliant.NADKWebrtcAuthentication;
 import com.icatchtek.nadk.reliant.NADKWebrtcSetupInfo;
+import com.icatchtek.nadk.reliant.datachannel.NADKDataChannel;
+import com.icatchtek.nadk.reliant.datachannel.NADKDataChannelListener;
 import com.icatchtek.nadk.reliant.parameter.NADKAudioParameter;
 import com.icatchtek.nadk.reliant.parameter.NADKVideoParameter;
 import com.icatchtek.nadk.reliant.parameter.NADKWebrtcStreamParameter;
@@ -69,9 +71,11 @@ import com.icatchtek.nadk.show.sdk.NADKPlaybackClientService;
 import com.icatchtek.nadk.show.utils.DatePickerHelper;
 import com.icatchtek.nadk.show.utils.NADKConfig;
 import com.icatchtek.nadk.show.utils.NetworkUtils;
+import com.icatchtek.nadk.show.wakeup.WakeUpThread;
 import com.icatchtek.nadk.webrtc.NADKWebrtc;
 import com.icatchtek.nadk.webrtc.NADKWebrtcClient;
 import com.icatchtek.nadk.webrtc.NADKWebrtcClientStatusListener;
+import com.icatchtek.nadk.webrtc.NADKWebrtcControl;
 import com.icatchtek.nadk.webrtc.assist.NADKAuthorization;
 import com.icatchtek.nadk.webrtc.assist.NADKWebrtcAppConfig;
 import com.icatchtek.nadk.webrtc.assist.NADKWebrtcServiceRoutines;
@@ -84,6 +88,7 @@ import com.tinyai.libmediacomponent.components.filelist.PhotoWallLayoutType;
 import com.tinyai.libmediacomponent.components.filelist.RefreshMode;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -134,6 +139,8 @@ public class LocalPlaybackActivity extends AppCompatActivity {
     private boolean masterRole = false;
     private NADKWebrtc webrtc;
     private NADKPlayback playback;
+    private NADKWebrtcClient webrtcClient;
+    private NADKWebrtcControl webrtcControl;
     private NADKWebrtcStreamParameter streamParameter;
     private NADKPlaybackClientService playbackClientService;
     private int signalingType;
@@ -145,6 +152,8 @@ public class LocalPlaybackActivity extends AppCompatActivity {
     private NADKPlaybackClient playbackClient;
 
     private PercentageProgressDialog dialog;
+
+    private WakeUpThread wakeUpThread;
 
 
     @Override
@@ -405,22 +414,22 @@ public class LocalPlaybackActivity extends AppCompatActivity {
                 //下载单个文件
 
                 //下载成功后标记下载状态，fileListView自动更新UI
-                ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (localFileListInfo != null) {
-                            String path = localFileListInfo.downloadMediaFile(DeviceLocalFileListInfo.convertToNADKMediaFile(info), new FileDownloadStatusListener());
-                            if (path != null) {
-                                handler.post(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        fileListView.markDownloaded(info);
-                                    }
-                                });
-                            }
-                        }
-                    }
-                }, 200);
+//                ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        if (localFileListInfo != null) {
+//                            String path = localFileListInfo.downloadMediaFile(DeviceLocalFileListInfo.convertToNADKMediaFile(info), new FileDownloadStatusListener());
+//                            if (path != null) {
+//                                handler.post(new Runnable() {
+//                                    @Override
+//                                    public void run() {
+//                                        fileListView.markDownloaded(info);
+//                                    }
+//                                });
+//                            }
+//                        }
+//                    }
+//                }, 200);
             }
 
             @Override
@@ -459,39 +468,6 @@ public class LocalPlaybackActivity extends AppCompatActivity {
 
         fileListView.setRefreshMode(RefreshMode.BOTH);
         fileListView.enableDownload(false);
-
-    }
-
-    private void loadFile(){
-        fileItemInfoList = new LinkedList<>();
-        long time = System.currentTimeMillis();
-        fileItemInfoList.add(new FileItemInfo(time,2968668,2000,1,1,"https://alifei04.cfp.cn/creative/vcg/800/version23/VCG21gic6371032.jpg","11.jpg"));
-        fileItemInfoList.add(new FileItemInfo(time + 1*1000,29648668,5000,1,2,"https://alifei03.cfp.cn/creative/vcg/800/new/VCG21gic6370430.jpg","12.jpg"));
-        fileItemInfoList.add(new FileItemInfo(time + 2*1000,29638668,11,1,3,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fimg.duoziwang.com%2F2018%2F04%2F2411191727687.jpg&refer=http%3A%2F%2Fimg.duoziwang.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303305&t=0dabba0a06955a0a56f492b63ac04742","13.jpg"));
-        fileItemInfoList.add(new FileItemInfo(time + 3*1000,2968668,15,2,1,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fimg.duoziwang.com%2F2017%2F03%2F26%2FB2154.jpg&refer=http%3A%2F%2Fimg.duoziwang.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=a7d9d41808adb555a32dfd602969f988","14.mp4"));
-        fileItemInfoList.add(new FileItemInfo(time + 4*1000,29628668,2000,2,1,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fimg.duoziwang.com%2F2019%2F05%2F08211345608033.jpg&refer=http%3A%2F%2Fimg.duoziwang.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=176832d3502f8ffd626e11f743c6efbd","15.mp4"));
-        fileItemInfoList.add(new FileItemInfo(time + 5*1000,2968668,5000,2,2,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fimg.duoziwang.com%2F2019%2F04%2F07090912704156.jpg&refer=http%3A%2F%2Fimg.duoziwang.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=690beb6075135f76d272032e3ff342b5","16.mp4"));
-        fileItemInfoList.add(new FileItemInfo(time + 6*1000,29684668,11,2,3,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fimg.duoziwang.com%2F2019%2F07%2F12080849902767.jpg&refer=http%3A%2F%2Fimg.duoziwang.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=aeedc8ede15711df3568fa0faae69d05","17.mp4"));
-        fileItemInfoList.add(new FileItemInfo(time + 7*1000,2968668,2000,2,1,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fimg.duoziwang.com%2F2019%2F08%2F01111742211966.jpg&refer=http%3A%2F%2Fimg.duoziwang.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=66b0a66d50bc8917ff8b1f1438c3aaef","18.mp4"));
-        fileItemInfoList.add(new FileItemInfo(time + 8*1000,2968668,5000,2,2,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fpic1.win4000.com%2Fwallpaper%2F7%2F53c7489f16b65_130_170.jpg&refer=http%3A%2F%2Fpic1.win4000.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=89cf0cf60921c2acc5aa1a061c6fd1a6","19.mp4"));
-        fileItemInfoList.add(new FileItemInfo(time + 9*1000,2968668,11,2,3,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fimg.duoziwang.com%2F2017%2F03%2F26%2FB0130.jpg&refer=http%3A%2F%2Fimg.duoziwang.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=823e867dd690a16e1257b55eb5999e14","20.mp4"));
-        fileItemInfoList.add(new FileItemInfo(time + 10*1000,2968668,15,2,1,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fi.qqkou.com%2Fi%2F0a3970196102x948153673b15.jpg&refer=http%3A%2F%2Fi.qqkou.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=06ab078403dc379b89f3e4b0a92b02c8","21.mp4"));
-        fileItemInfoList.add(new FileItemInfo(time +11*1000,2968668,2000,1,1,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fimg.duoziwang.com%2F2018%2F04%2F2411293529514.jpg&refer=http%3A%2F%2Fimg.duoziwang.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=b9d7c01904aac1b4f8d7848ee5cc9983","22.jpg"));
-        fileItemInfoList.add(new FileItemInfo(time + 12*1000,2968668,5000,1,2,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fimg.duoziwang.com%2F2016%2F12%2F14%2F14190452742.jpg&refer=http%3A%2F%2Fimg.duoziwang.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=b09a584708b08bd9a4f4ec037014b645","23.jpg"));
-        fileItemInfoList.add(new FileItemInfo(time + 13*1000,2968668,11,1,3,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fimg.duoziwang.com%2F2016%2F09%2F19%2F1458341903.jpg&refer=http%3A%2F%2Fimg.duoziwang.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=3d70e7bdfa56d338559ff18b3fce0ed1","24.jpg"));
-        fileItemInfoList.add(new FileItemInfo(time + 14*1000,2968668,15,1,1,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fpic1.win4000.com%2Fwallpaper%2F7%2F53c748aced092_130_170.jpg&refer=http%3A%2F%2Fpic1.win4000.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=b7f808a46b222e43718e53470b1d231d","25.jpg"));
-        fileItemInfoList.add(new FileItemInfo(time + 15*1000,2968668,2000,1,1,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fimg.duoziwang.com%2F2019%2F07%2F10291453900812.jpg&refer=http%3A%2F%2Fimg.duoziwang.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=9a3b806a83b787974a3f5124a8e06bfb","26.jpg"));
-        fileItemInfoList.add(new FileItemInfo(time + 16*1000,2968668,5000,1,2,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Flmg.jj20.com%2Fup%2Fallimg%2Ftx20%2F460419014828948.jpg&refer=http%3A%2F%2Flmg.jj20.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=ef2962123a829915e824ae9abc7ff4e3","27.jpg"));
-        fileItemInfoList.add(new FileItemInfo(time + 17*1000,2968668,11,1,3,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fimg.duoziwang.com%2F2019%2F07%2F12080849902157.jpg&refer=http%3A%2F%2Fimg.duoziwang.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=b620217cf413ef8adbd49f503d14cbce","28.jpg"));
-        fileItemInfoList.add(new FileItemInfo(time + 18*1000,2968668,15,1,1,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fpic1.win4000.com%2Fwallpaper%2F8%2F580b0d571c7a3_120_80.jpg&refer=http%3A%2F%2Fpic1.win4000.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=7edcb0cf84d86002134e666001ee7848","29.jpg"));
-        fileItemInfoList.add(new FileItemInfo(time + 19*1000,2968668,2000,1,1,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fpic1.win4000.com%2Fwallpaper%2F8%2F580b0d4fa9029_120_80.jpg&refer=http%3A%2F%2Fpic1.win4000.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=1469336ae3e5a65a10ebcfe635aa3b95","30.jpg"));
-        fileItemInfoList.add(new FileItemInfo(time + 20*1000,2968668,5000,1,2,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fimg.duoziwang.com%2F2017%2F03%2F17%2FB3622.jpg&refer=http%3A%2F%2Fimg.duoziwang.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=924d7e1c32808be017e358bd514c6f1a","31.jpg"));
-        fileItemInfoList.add(new FileItemInfo(time + 21*1000,2968668,11,1,3,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fwww.keaidian.com%2Fuploads%2Fallimg%2F191008%2F08155524_48.jpg&refer=http%3A%2F%2Fwww.keaidian.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=822d8b971750ef9676220d5c724d4f9c","32.jpg"));
-        fileItemInfoList.add(new FileItemInfo(time + 22*1000,2968668,15,1,1,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fpic1.win4000.com%2Fwallpaper%2F7%2F53c7488b110fa_120_80.jpg&refer=http%3A%2F%2Fpic1.win4000.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=7c9f2ecf776b33f102542e4a0a3c544b","33.jpg"));
-        fileItemInfoList.add(new FileItemInfo(time + 23*1000,2968668,2000,1,1,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fimg.duoziwang.com%2F2016%2F10%2F02%2F144712602.jpg&refer=http%3A%2F%2Fimg.duoziwang.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=40cc5e1c740144425a497aa177159bf5","34.jpg"));
-        fileItemInfoList.add(new FileItemInfo(time + 24*1000,2968668,5000,1,2,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fimages.liqucn.com%2Fimg%2Fh24%2Fh33%2Fimg_localize_c3a5d9ef54f70c335d9c4abf6bfa11d3_200x200.png&refer=http%3A%2F%2Fimages.liqucn.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=08a009545cc3935b42c3656ea1c77980","35.jpg"));
-        fileItemInfoList.add(new FileItemInfo(time + 25*1000,2968668,11,1,3,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fimg.duoziwang.com%2F2018%2F17%2F05200741509222.jpg&refer=http%3A%2F%2Fimg.duoziwang.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=ff2133e67d2fb23d275c4bac40dc6a4b","36.jpg"));
-        fileItemInfoList.add(new FileItemInfo(time + 26*1000,2968668,15,1,1,"https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fi.qqkou.com%2Fi%2F0a1484765024x3693075515b15.jpg&refer=http%3A%2F%2Fi.qqkou.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto?sec=1658303333&t=10f2efbf0d916c4994523067d563dabe","37.jpg"));
 
     }
 
@@ -579,34 +555,65 @@ public class LocalPlaybackActivity extends AppCompatActivity {
     }
 
     private String getUrl(FileItemInfo itemInfo) {
-
         return downloadFile(itemInfo);
-
     }
 
     private String downloadFile(FileItemInfo itemInfo) {
-        String dstFile = CACHE_PATH + "/" + itemInfo.getFileName();
+        String dstFile = STORAGE_PATH + "/" + itemInfo.getFileName();
         File file = new File(dstFile);
         if (file.exists()) {
             return LOCAL_FILE_PREFIX + dstFile;
         }
         if (localFileListInfo != null) {
 //            showDownloadDialog();
-            String filePath = localFileListInfo.downloadMediaFile(DeviceLocalFileListInfo.convertToNADKMediaFile(itemInfo), new NADKFileTransferStatusListener() {
+
+            FileDownloadStatusListener fileDownloadStatusListener = new FileDownloadStatusListener(new NADKFileTransferListener() {
+                private long fileSize;
+                private String fileName;
+
                 @Override
-                public void transferNotify(long transferedSize, long fileSize) {
-                    updateDownloadDialog(transferedSize, fileSize);
+                public void transferStarted(String fileName, long fileSize) {
+                    this.fileSize = fileSize;
+                    this.fileName = fileName;
+                    setMaxProgressForDownloadDialog(fileSize);
+
                 }
+
+                @Override
+                public void transferFinished(long transferedSize) {
+                    if (fileSize == transferedSize) {
+                        if (fileName != null && !fileName.isEmpty()) {
+//                            File srcFile = new File(fileName);
+                            createDirectory(STORAGE_PATH);
+                            FileUtil.copy(fileName, dstFile);
+//                            srcFile.renameTo(new File(dstFile));
+                        }
+                    }
+
+                }
+
+                @Override
+                public void transferInformation(long transferedSize) {
+                    updateDownloadDialog(transferedSize);
+
+                }
+
+
             });
-            dismissDownloadDialog();
-            if (filePath != null && !filePath.isEmpty()) {
-                File srcFile = new File(filePath);
-                srcFile.renameTo(new File(dstFile));
-//                FileOper.createDirectory(STORAGE_PATH);
-//                if (FileUtil.copy(filePath, dstFile)) {
-                    return LOCAL_FILE_PREFIX + dstFile;
-//                }
-            }
+
+            ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
+                @Override
+                public void run() {
+
+
+                    String filePath = localFileListInfo.downloadMediaFile(DeviceLocalFileListInfo.convertToNADKMediaFile(itemInfo), (NADKFileTransferListener) fileDownloadStatusListener);
+                    dismissDownloadDialog();
+
+                }
+            }, 200);
+
+            return fileDownloadStatusListener.getFileName();
+
         }
         return "";
     }
@@ -632,12 +639,23 @@ public class LocalPlaybackActivity extends AppCompatActivity {
         });
     }
 
-    private void updateDownloadDialog(long transferedSize, long fileSize) {
+    private void setMaxProgressForDownloadDialog(long fileSize) {
         handler.post(new Runnable() {
             @Override
             public void run() {
                 if (dialog != null && dialog.isShowing()) {
                     dialog.setMaxProgress(fileSize);
+                }
+            }
+        });
+
+    }
+
+    private void updateDownloadDialog(long transferedSize) {
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                if (dialog != null && dialog.isShowing()) {
                     dialog.setCurrentProgress(transferedSize);
                 }
             }
@@ -786,10 +804,25 @@ public class LocalPlaybackActivity extends AppCompatActivity {
         }
     }
 
+    private void startWakeup() {
+        NADKAuthorization authorization = NADKConfig.getInstance().getLanModeAuthorization();
+
+        try {
+            wakeUpThread = new WakeUpThread(authorization.getAccessKey(), authorization.getSecretKey());
+            wakeUpThread.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void stopWakeup() {
+        if (wakeUpThread != null) {
+            wakeUpThread.setStopFlag();
+            wakeUpThread = null;
+        }
+    }
+
     private boolean initWebrtc() {
-        List<NADKNetAddress> localAddresses = NetworkUtils.getNetworkAddress();
-        this.streamParameter = new NADKWebrtcStreamParameter(
-                new NADKAudioParameter(), new NADKVideoParameter(), localAddresses);
 
         try
         {
@@ -800,12 +833,16 @@ public class LocalPlaybackActivity extends AppCompatActivity {
 //            this.initLogger(this.webrtc.getLogger(), masterRole);
 
             /* create playback based on webrtc */
-            createDirectory(MEDIA_PATH);
-            createDirectory(CACHE_PATH);
+            String path = getExternalCacheDir().toString() + "/NADK";
+            createDirectory(path);
+            createDirectory(path);
+
 
             this.playback = NADKPlaybackAssist.createWebrtcPlayback(
-                    masterRole, MEDIA_PATH, CACHE_PATH, this.webrtc);
+                    masterRole, path, path, this.webrtc);
 
+
+            webrtc.addClientStatusListener(new WebrtcStatusListener());
 
             /* add a status listener, we want to upload file log after all
              * webrtc session disconnected. */
@@ -823,6 +860,7 @@ public class LocalPlaybackActivity extends AppCompatActivity {
 
     private boolean prepareWebrtc()
     {
+        startWakeup();
         try
         {
             /* create a playback client listener,
@@ -842,7 +880,7 @@ public class LocalPlaybackActivity extends AppCompatActivity {
 
 
             /* prepare the webrtc client, connect to the signaling */
-            this.webrtc.prepareWebrtc(setupInfo, authentication, this.streamParameter);
+            this.webrtc.prepareWebrtc(setupInfo, authentication);
         }
         catch(NADKException ex) {
             ex.printStackTrace();
@@ -854,6 +892,7 @@ public class LocalPlaybackActivity extends AppCompatActivity {
 
     private boolean destroyWebrtc()
     {
+        stopWakeup();
         AppLog.i(TAG, "stop viewer");
         /* destroy playback */
         try {
@@ -874,6 +913,8 @@ public class LocalPlaybackActivity extends AppCompatActivity {
         this.localFileListInfo = null;
 //        this.fileItemInfoList.clear();
         this.fileItemInfoList = null;
+        this.webrtcClient = null;
+        this.webrtcControl = null;
         AppLog.reInitLog();
         return true;
     }
@@ -961,6 +1002,7 @@ public class LocalPlaybackActivity extends AppCompatActivity {
 
         @Override
         public void created(NADKWebrtcClient webrtcClient) {
+            initWebrtcControl(webrtcClient);
 
         }
 
@@ -972,7 +1014,9 @@ public class LocalPlaybackActivity extends AppCompatActivity {
 
         @Override
         public void connected(NADKWebrtcClient webrtcClient) {
+            stopWakeup();
 
+//            initWebrtcControl(webrtcClient);
         }
 
         @Override
@@ -981,10 +1025,30 @@ public class LocalPlaybackActivity extends AppCompatActivity {
 
         }
 
-        @Override
-        public void formatChanged(NADKWebrtcClient webrtcClient, NADKAudioParameter audioParameter, NADKVideoParameter videoParameter) {
+    }
 
+    private void initWebrtcControl(NADKWebrtcClient webrtcClient) {
+        this.webrtcClient = webrtcClient;
+        try {
+            webrtcControl= NADKWebrtcControl.createControl(webrtcClient);
+            AppLog.d(TAG, "createControl succeed");
+            webrtcControl.addDataChannelListener(new NADKDataChannelListener() {
+                @Override
+                public void onDataChannelCreated(NADKDataChannel dataChannel) {
+                    try {
+                        AppLog.d(TAG, "onDataChannelCreated: " + dataChannel.getChannelName());
+                    } catch (NADKException e) {
+                        e.printStackTrace();
+                    }
+
+                }
+            });
+            AppLog.d(TAG, "addDataChannelListener succeed");
+        } catch (NADKException e) {
+            e.printStackTrace();
+            AppLog.d(TAG, "initWebrtcControl: " + e.getMessage());
         }
+
     }
 
 }

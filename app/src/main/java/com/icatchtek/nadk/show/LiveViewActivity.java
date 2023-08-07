@@ -25,6 +25,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.icatchtek.basecomponent.utils.ClickUtils;
+import com.icatchtek.baseutil.ThreadPoolUtils;
 import com.icatchtek.baseutil.device.MyOrientationEventListener;
 import com.icatchtek.baseutil.device.ScreenUtils;
 import com.icatchtek.baseutil.info.SystemInfo;
@@ -35,6 +36,7 @@ import com.icatchtek.nadk.reliant.NADKSignalingType;
 import com.icatchtek.nadk.reliant.NADKWebrtcAuthentication;
 import com.icatchtek.nadk.reliant.NADKWebrtcSetupInfo;
 import com.icatchtek.nadk.reliant.event.NADKEvent;
+import com.icatchtek.nadk.reliant.event.NADKEventHandler;
 import com.icatchtek.nadk.reliant.event.NADKEventID;
 import com.icatchtek.nadk.reliant.event.NADKEventListener;
 import com.icatchtek.nadk.reliant.parameter.NADKAudioParameter;
@@ -46,6 +48,8 @@ import com.icatchtek.nadk.show.utils.NADKConfig;
 import com.icatchtek.nadk.show.utils.NADKShowLog;
 import com.icatchtek.nadk.show.utils.NADKWebRtcAudioRecord;
 import com.icatchtek.nadk.show.utils.NetworkUtils;
+import com.icatchtek.nadk.show.wakeup.WakeUpThread;
+import com.icatchtek.nadk.show.wakeup.WakeupUtils;
 import com.icatchtek.nadk.streaming.NADKStreamingClient;
 import com.icatchtek.nadk.streaming.render.NADKStreamingRender;
 import com.icatchtek.nadk.streaming.NADKStreaming;
@@ -55,18 +59,25 @@ import com.icatchtek.nadk.streaming.producer.NADKStreamingProducer;
 import com.icatchtek.nadk.streaming.render.gl.type.NADKGLColor;
 import com.icatchtek.nadk.streaming.render.gl.type.NADKGLDisplayPPI;
 import com.icatchtek.nadk.webrtc.NADKWebrtc;
+import com.icatchtek.nadk.webrtc.assist.NADKAuthorization;
 
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
+import java.net.SocketTimeoutException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
 public class LiveViewActivity extends BaseWebrtcActivity
 {
-    private static final String TAG = "NADKClientSample";
+    private static final String TAG = LiveViewActivity.class.getSimpleName();
 
     private boolean masterRole = false;
     private NADKWebrtc webrtc;
@@ -97,6 +108,9 @@ public class LiveViewActivity extends BaseWebrtcActivity
     private int originalAudioMode;
     private boolean originalSpeakerphoneOn;
     private NADKWebRtcAudioRecord nadkWebRtcAudioRecord;
+
+    private WakeUpThread wakeUpThread;
+
 
     @Override
     protected void setContentViewWhichHasSurfaceView1()
@@ -167,21 +181,32 @@ public class LiveViewActivity extends BaseWebrtcActivity
             }
         });
 
+        Button wakeup_btn = findViewById(R.id.wakeup_btn);
+        wakeup_btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        NADKAuthorization authorization = NADKConfig.getInstance().getLanModeAuthorization();
+                        WakeupUtils.wakeup(authorization.getAccessKey(), authorization.getSecretKey());
+                    }
+                }, 200);
+            }
+        });
+
         initView();
 
         Intent intent = getIntent();
         signalingType = intent.getIntExtra("signalingType", NADKSignalingType.NADK_SIGNALING_TYPE_KVS);
-
-        AppLog.i("LiveView", "Flow, using APP IP address");
-        List<NADKNetAddress> localAddresses = NetworkUtils.getNetworkAddress();
-        this.streamParameter = new NADKWebrtcStreamParameter(
-                new NADKAudioParameter(), new NADKVideoParameter(), localAddresses);
 
         try
         {
             AppLog.i("LiveView", "Flow, createWebrtcStreaming start");
             /* create webrtc */
             this.webrtc = NADKWebrtc.create(this.masterRole);
+
+            NADKEventHandler eventHandler = webrtc.getEventHandler();
 
             /* create streaming based on webrtc */
             this.streaming = NADKStreamingAssist.createWebrtcStreaming(this.webrtc);
@@ -354,11 +379,30 @@ public class LiveViewActivity extends BaseWebrtcActivity
         }
     }
 
+    private void startWakeup() {
+        NADKAuthorization authorization = NADKConfig.getInstance().getLanModeAuthorization();
+
+        try {
+            wakeUpThread = new WakeUpThread(authorization.getAccessKey(), authorization.getSecretKey());
+            wakeUpThread.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void stopWakeup() {
+        if (wakeUpThread != null) {
+            wakeUpThread.setStopFlag();
+            wakeUpThread = null;
+        }
+    }
+
     private boolean prepareWebrtc()
     {
+        startWakeup();
+
         try
         {
-
             AppLog.i("LiveView", "Flow, prepareRender start");
             if (this.surfaceContext != null)
             {
@@ -406,11 +450,19 @@ public class LiveViewActivity extends BaseWebrtcActivity
                 }
 
                 @Override
-                public void formatChanged(NADKStreamingClient streamingClient, NADKAudioParameter audioParameter, NADKVideoParameter videoParameter) {
+                public void streamingEnabled(NADKStreamingClient streamingClient, NADKAudioParameter audioParameter, NADKVideoParameter videoParameter) {
 
                 }
+
+                @Override
+                public void streamingDisabled(NADKStreamingClient streamingClient) {
+
+                }
+
             });
-            this.streaming.prepare(clientListener);
+
+            this.streamParameter = new NADKWebrtcStreamParameter();
+            this.streaming.prepare(this.streamParameter, clientListener);
 
             /* prepare webrtc client*/
 
@@ -426,7 +478,7 @@ public class LiveViewActivity extends BaseWebrtcActivity
 
             AppLog.i("LiveView", "Flow, startWebrtcStreaming start");
             /* prepare the webrtc client, connect to the signaling */
-            this.webrtc.prepareWebrtc(setupInfo, authentication, this.streamParameter);
+            this.webrtc.prepareWebrtc(setupInfo, authentication);
             AppLog.i("LiveView", "Flow, startWebrtcStreaming end");
         }
         catch(NADKException ex) {
@@ -442,6 +494,8 @@ public class LiveViewActivity extends BaseWebrtcActivity
     {
         AppLog.i("LiveView", "Flow, disconnect");
         AppLog.i(TAG, "stop viewer");
+
+        stopWakeup();
 
         enableTalk = false;
         talk_btn.setText("Enable Talk");
@@ -590,6 +644,7 @@ public class LiveViewActivity extends BaseWebrtcActivity
             } else if (event.getEventID() == NADKEventID.NADK_EVENT_WEBRTC_PEER_CONNECTED) {
                 status = "NADK_EVENT_WEBRTC_PEER_CONNECTED";
                 AppLog.i("LiveView", "Flow, NADK_EVENT_WEBRTC_PEER_CONNECTED");
+                stopWakeup();
                 final String finalStatus = status;
                 handler.post(new Runnable() {
                     @Override

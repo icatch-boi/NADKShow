@@ -40,6 +40,7 @@ public class MainActivity extends AppCompatActivity {
     private Button aws_kvs_stream_btn;
     private Button tinyai_rtc_btn;
     private Button lan_mode_btn;
+    private Button lan_mode_search_btn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,6 +51,7 @@ public class MainActivity extends AppCompatActivity {
         aws_kvs_stream_btn = findViewById(R.id.aws_kvs_stream_btn);
         tinyai_rtc_btn = findViewById(R.id.tinyai_rtc_btn);
         lan_mode_btn = findViewById(R.id.lan_mode_btn);
+        lan_mode_search_btn = findViewById(R.id.lan_mode_search_btn);
 
         setting_btn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -95,7 +97,14 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 Intent intent = new Intent(MainActivity.this, LanModeActivity.class);
                 startActivity(intent);
+            }
+        });
 
+        lan_mode_search_btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, DeviceListActivity.class);
+                startActivity(intent);
             }
         });
 

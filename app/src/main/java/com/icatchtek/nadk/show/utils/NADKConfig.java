@@ -106,6 +106,7 @@ public class NADKConfig {
         setupInfo.setTrickleIce(true);
         setupInfo.setUseTurn(true);
         setupInfo.setMaxLatency(500);
+        setupInfo.setLocalAddresses(NetworkUtils.getNetworkAddress());
 
         if (signalingType == NADKSignalingType.NADK_SIGNALING_TYPE_BASE_TCP) {
             setupInfo.setSrtp(false);

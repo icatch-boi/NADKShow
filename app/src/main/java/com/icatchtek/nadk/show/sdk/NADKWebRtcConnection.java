@@ -40,8 +40,7 @@ public class NADKWebRtcConnection {
 
     private boolean initWebrtc() {
         List<NADKNetAddress> localAddresses = NetworkUtils.getNetworkAddress();
-        this.streamParameter = new NADKWebrtcStreamParameter(
-                new NADKAudioParameter(), new NADKVideoParameter());
+        this.streamParameter = new NADKWebrtcStreamParameter();
 
         try
         {
@@ -111,7 +110,7 @@ public class NADKWebRtcConnection {
             }
 
             /* prepare the webrtc client, connect to the signaling */
-            this.webrtc.prepareWebrtc(setupInfo, authentication, this.streamParameter);
+            this.webrtc.prepareWebrtc(setupInfo, authentication);
         }
         catch(NADKException ex) {
             ex.printStackTrace();

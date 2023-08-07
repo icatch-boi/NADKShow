@@ -1,7 +1,7 @@
 package com.icatchtek.nadk.show.sdk;
 
 import com.icatchtek.nadk.playback.NADKPlaybackClient;
-import com.icatchtek.nadk.playback.file.NADKFileTransferStatusListener;
+import com.icatchtek.nadk.playback.file.NADKFileTransferListener;
 import com.icatchtek.nadk.playback.type.NADKDateTime;
 import com.icatchtek.nadk.playback.type.NADKMediaFile;
 import com.icatchtek.nadk.playback.type.NADKThumbnail;
@@ -39,7 +39,7 @@ public class DeviceLocalFileListInfo {
         return fileInfoList;
     }
 
-    public synchronized List<FileItemInfo> pullDownToRefresh() throws NADKException {
+    public List<FileItemInfo> pullDownToRefresh() throws NADKException {
         if (this.fileInfoList.isEmpty()) {
             if (playbackClient != null) {
                 NADKDateTime headTime = convertToNADKDateTime(startTimeOfList);
@@ -70,7 +70,7 @@ public class DeviceLocalFileListInfo {
         return null;
     }
 
-    public synchronized List<FileItemInfo> pullUpToRefresh() throws NADKException {
+    public List<FileItemInfo> pullUpToRefresh() throws NADKException {
         if (this.fileInfoList.isEmpty()) {
             if (playbackClient != null) {
                 NADKDateTime headTime = convertToNADKDateTime(startTimeOfList);
@@ -103,14 +103,14 @@ public class DeviceLocalFileListInfo {
 
     }
 
-    public synchronized String downloadThumbnail(NADKMediaFile mediaFile) {
+    public String downloadThumbnail(NADKMediaFile mediaFile) {
         if (playbackClient == null) {
             return null;
         }
 
         try {
             NADKThumbnail thumbnail = playbackClient.getThumbnail(mediaFile);
-            NADKFileTransferStatusListener Listener = new FileDownloadStatusListener();
+            NADKFileTransferListener Listener = new FileDownloadStatusListener(null);
             return this.playbackClient.downloadThumbnail(thumbnail, Listener);
         } catch (NADKException e) {
             e.printStackTrace();
@@ -120,7 +120,7 @@ public class DeviceLocalFileListInfo {
 //        return "/storage/self/primary/NADKWebrtcResources/media/cache/20230217_000428.thm_1690193125_614327.tmp.jpg";
     }
 
-    public synchronized String downloadMediaFile(NADKMediaFile mediaFile, NADKFileTransferStatusListener listener) {
+    public synchronized String downloadMediaFile(NADKMediaFile mediaFile, NADKFileTransferListener listener) {
         if (playbackClient == null) {
             return null;
         }
