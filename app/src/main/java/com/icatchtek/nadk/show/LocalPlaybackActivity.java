@@ -17,8 +17,6 @@ import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.Player;
@@ -72,7 +70,7 @@ import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
 
-public class LocalPlaybackActivity extends AppCompatActivity {
+public class LocalPlaybackActivity extends NADKShowBaseActivity {
     private static final String TAG = LocalPlaybackActivity.class.getSimpleName();
     private Handler handler = new Handler();
 

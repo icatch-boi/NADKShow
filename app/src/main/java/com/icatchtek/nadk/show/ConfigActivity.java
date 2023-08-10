@@ -1,7 +1,5 @@
 package com.icatchtek.nadk.show;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.View;
@@ -21,7 +19,7 @@ import java.util.Arrays;
 import java.util.List;
 
 
-public class ConfigActivity extends AppCompatActivity {
+public class ConfigActivity extends NADKShowBaseActivity {
     private static final String TAG = ConfigActivity.class.getSimpleName();
     private static final String[] supportOptions = {"AWS_KVS_WEBRTC", "AWS_KVS_STREAM", "TINYAI_RTC", "LAN_MODE", "DEBUG"};
     private static final String[] booleanOptions = {"true", "false"};

@@ -61,6 +61,8 @@ dependencies {
     implementation 'com.githang:status-bar-compat:latest.integration'
     implementation "androidx.recyclerview:recyclerview:${versions.recyclerview}"
     implementation "com.nostra13.universalimageloader:universal-image-loader:${versions.universal_image_loader}"
+    implementation 'com.tencent.bugly:crashreport:3.2.3'
+    implementation 'com.tencent.bugly:nativecrashreport:3.7.7'
 
     api files('libs/basecomponent-debug_0.0.5.aar')
     api files('libs/baseutil-debug_0.0.16.aar')

@@ -1,55 +1,34 @@
 package com.icatchtek.nadk.show;
 
-import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.os.Environment;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.Toast;
-
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
 
 import com.icatchtek.baseutil.ThreadPoolUtils;
-import com.icatchtek.baseutil.file.FileUtil;
 import com.icatchtek.baseutil.log.AppLog;
-import com.icatchtek.baseutil.permission.PermissionTools;
-import com.icatchtek.nadk.reliant.NADKException;
 import com.icatchtek.nadk.reliant.NADKSignalingType;
 import com.icatchtek.nadk.show.device.DeviceManager;
 import com.icatchtek.nadk.show.device.NADKLocalDevice;
 import com.icatchtek.nadk.show.ssdp.SSDPSearchResponse;
 import com.icatchtek.nadk.show.ssdp.SearchUtils;
 import com.icatchtek.nadk.show.utils.NADKConfig;
-import com.icatchtek.nadk.show.utils.NADKShowLog;
 import com.icatchtek.nadk.show.wakeup.WOLMagicPacket;
-import com.icatchtek.nadk.webrtc.NADKWebrtc;
 import com.icatchtek.nadk.webrtc.assist.NADKAuthorization;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.MalformedURLException;
 import java.net.SocketTimeoutException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
 
-public class LanModeActivity extends AppCompatActivity {
+public class LanModeActivity extends NADKShowBaseActivity {
     private static final String TAG = LanModeActivity.class.getSimpleName();
     private ImageButton back_btn;
     private Button live_view_btn;

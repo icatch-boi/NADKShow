@@ -1,7 +1,5 @@
 package com.icatchtek.nadk.show;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.os.Bundle;
@@ -48,7 +46,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
-public class VideoPlaybackActivity extends AppCompatActivity {
+public class VideoPlaybackActivity extends NADKShowBaseActivity {
     private static final String TAG = VideoPlaybackActivity.class.getSimpleName();
     private static final String[] supportProtocol = {"HLS", "DASH"};
     private List<String> supportProtocolList;

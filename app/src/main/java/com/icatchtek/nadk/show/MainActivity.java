@@ -1,7 +1,6 @@
 package com.icatchtek.nadk.show;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Context;
 import android.content.Intent;
@@ -9,17 +8,15 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
-import com.icatch.smarthome.am.aws.AmazonAwsUtil;
 import com.icatchtek.baseutil.file.FileUtil;
-import com.icatchtek.baseutil.imageloader.ImageLoaderConfig;
 import com.icatchtek.baseutil.log.AppLog;
 import com.icatchtek.baseutil.permission.PermissionTools;
-import com.icatchtek.nadk.show.imageloader.CustomImageDownloader;
 import com.icatchtek.nadk.show.utils.NADKConfig;
 import com.icatchtek.nadk.show.utils.NADKShowLog;
 import com.icatchtek.nadk.reliant.NADKException;
@@ -33,7 +30,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends NADKShowBaseActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
     private ImageButton setting_btn;
     private Button aws_kvs_webrtc_btn;
@@ -116,6 +113,21 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         NADKConfig.getInstance().loadConfig();
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_HOME:
+                AppLog.d(TAG, "home");
+                finish();
+                break;
+            case KeyEvent.KEYCODE_BACK:
+                AppLog.d(TAG, "back");
+                finish();
+                break;
+        }
+        return true;
     }
 
     @Override

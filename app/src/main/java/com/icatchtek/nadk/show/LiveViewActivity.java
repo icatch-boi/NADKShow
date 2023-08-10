@@ -28,8 +28,6 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AppCompatActivity;
-
 import com.icatchtek.basecomponent.utils.ClickUtils;
 import com.icatchtek.baseutil.ThreadPoolUtils;
 import com.icatchtek.baseutil.device.MyOrientationEventListener;
@@ -41,17 +39,14 @@ import com.icatchtek.nadk.playback.NADKPlaybackAssist;
 import com.icatchtek.nadk.playback.NADKPlaybackClient;
 import com.icatchtek.nadk.playback.NADKPlaybackClientListener;
 import com.icatchtek.nadk.playback.file.NADKFileStatusListener;
-import com.icatchtek.nadk.playback.impl.FileStatusListener;
 import com.icatchtek.nadk.playback.type.NADKMediaFile;
 import com.icatchtek.nadk.reliant.NADKException;
-import com.icatchtek.nadk.reliant.NADKNetAddress;
 import com.icatchtek.nadk.reliant.NADKSignalingType;
 import com.icatchtek.nadk.reliant.NADKWebrtcAuthentication;
 import com.icatchtek.nadk.reliant.NADKWebrtcSetupInfo;
 import com.icatchtek.nadk.reliant.datachannel.NADKDataChannel;
 import com.icatchtek.nadk.reliant.datachannel.NADKDataChannelListener;
 import com.icatchtek.nadk.reliant.event.NADKEvent;
-import com.icatchtek.nadk.reliant.event.NADKEventHandler;
 import com.icatchtek.nadk.reliant.event.NADKEventID;
 import com.icatchtek.nadk.reliant.event.NADKEventListener;
 import com.icatchtek.nadk.reliant.parameter.NADKAudioParameter;
@@ -65,7 +60,6 @@ import com.icatchtek.nadk.show.sdk.NADKPlaybackClientService;
 import com.icatchtek.nadk.show.utils.NADKConfig;
 import com.icatchtek.nadk.show.utils.NADKShowLog;
 import com.icatchtek.nadk.show.utils.NADKWebRtcAudioRecord;
-import com.icatchtek.nadk.show.utils.NetworkUtils;
 import com.icatchtek.nadk.show.wakeup.WakeUpThread;
 import com.icatchtek.nadk.show.wakeup.WakeupUtils;
 import com.icatchtek.nadk.streaming.NADKStreamingClient;
@@ -85,20 +79,9 @@ import com.icatchtek.nadk.webrtc.assist.NADKAuthorization;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.Inet4Address;
-import java.net.Inet6Address;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.SocketTimeoutException;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
 
-public class LiveViewActivity extends AppCompatActivity
+
+public class LiveViewActivity extends NADKShowBaseActivity
 {
     private static final String TAG = LiveViewActivity.class.getSimpleName();
 
@@ -557,6 +540,9 @@ public class LiveViewActivity extends AppCompatActivity
     }
 
     private void startWakeup() {
+        if (signalingType != NADKSignalingType.NADK_SIGNALING_TYPE_BASE_TCP) {
+            return;
+        }
         NADKAuthorization authorization = NADKConfig.getInstance().getLanModeAuthorization();
 
         try {
@@ -575,10 +561,11 @@ public class LiveViewActivity extends AppCompatActivity
     }
 
     private boolean initWebrtc() {
-
-        nadkLocalDevice = DeviceManager.getInstance().getDevice(NADKConfig.getInstance().getLanModeAuthorization().getAccessKey());
-        if (nadkLocalDevice != null) {
-            nadkLocalDevice.setPlaybackClient(null);
+        if (signalingType == NADKSignalingType.NADK_SIGNALING_TYPE_BASE_TCP) {
+            nadkLocalDevice = DeviceManager.getInstance().getDevice(NADKConfig.getInstance().getLanModeAuthorization().getAccessKey());
+            if (nadkLocalDevice != null) {
+                nadkLocalDevice.setPlaybackClient(null);
+            }
         }
 
         try

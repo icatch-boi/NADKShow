@@ -8,9 +8,6 @@ import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
-import android.widget.TextView;
-
-import androidx.appcompat.app.AppCompatActivity;
 
 import com.icatchtek.basecomponent.prompt.MyProgressDialog;
 import com.icatchtek.basecomponent.utils.ClickUtils;
@@ -30,7 +27,7 @@ import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 
-public class DeviceListActivity extends AppCompatActivity {
+public class DeviceListActivity extends NADKShowBaseActivity {
     private static final String TAG = DeviceListActivity.class.getSimpleName();
     private Handler handler = new Handler();
 
@@ -78,7 +75,6 @@ public class DeviceListActivity extends AppCompatActivity {
                 search();
             }
         });
-
 
     }
 

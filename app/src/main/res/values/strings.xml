@@ -7,4 +7,6 @@
     <string name="text_connected">Connected</string>
     <string name="text_connecting">Connecting...</string>
     <string name="text_downloading">Downloading...</string>
+    <string name="text_subscribe_msg">Subscription message</string>
+    <string name="text_crash_tips">Sorry, the program encountered an exception and is about to exit.</string>
 </resources>
