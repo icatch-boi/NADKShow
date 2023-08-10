@@ -19,9 +19,9 @@ public class SearchDeviceThread extends Thread {
     public SearchDeviceThread() throws IOException {
         this.socket = new SSDPSocket(SSDPConstants.ADDRESS, 2000);
         responseList = new LinkedList<>();
-        SSDPSearchResponse response = new SSDPSearchResponse("ST: urn:icatch-upnp:device:camera:1\r\nUSN: uuid:30-7B-C9-24-AB-31::urn:icatch-upnp:device:camera:1\r\n");
-        response.setIP("192.168.0.114");
-        responseList.add(response);
+//        SSDPSearchResponse response = new SSDPSearchResponse("ST: urn:icatch-upnp:device:camera:1\r\nUSN: uuid:30-7B-C9-24-AB-31::urn:icatch-upnp:device:camera:1\r\n");
+//        response.setIP("192.168.0.115");
+//        responseList.add(response);
     }
 
     public void setStopFlag(){

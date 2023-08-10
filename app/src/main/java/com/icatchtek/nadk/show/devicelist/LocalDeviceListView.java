@@ -64,6 +64,7 @@ public class LocalDeviceListView extends LinearLayout implements PullToRefreshBa
         deviceFileListView.setOnRefreshListener(this);
 //        setRefreshMode(refresh_mode);
         deviceFileListView.setMode(PullToRefreshBase.Mode.PULL_FROM_START);
+//        adapter = new LocalDeviceListAdapter(this.context, deviceFileList, deviceItemProperty);
 
     }
 

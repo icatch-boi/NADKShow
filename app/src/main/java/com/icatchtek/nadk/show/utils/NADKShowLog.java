@@ -147,7 +147,7 @@ public class NADKShowLog implements Logger {
         NADKAppLog.setDevcieID(deviceId);
         NADKAppLog.setApplication(application);
         NADKAppLog.setThreadInfo(true);
-        NADKAppLog.setCachedInfo(true);
+        NADKAppLog.setCachedInfo(false);
         NADKAppLog.setDebugMode(true);
         NADKAppLog.setCachingMode(false);
         NADKAppLog.setSystemLog(true);
@@ -167,7 +167,7 @@ public class NADKShowLog implements Logger {
 
         NADKAppLog.setModule(NADKAppLogModule.NADK_LOG_MODULE_STREAM, true);
         NADKAppLog.setModuleLevel(NADKAppLogModule.NADK_LOG_MODULE_STREAM, NADKAppLogLevel.NADK_LOG_LEVEL_VERB);
-        NADKAppLog.setModule(NADKAppLogModule.NADK_LOG_MODULE_RENDER, false);
+        NADKAppLog.setModule(NADKAppLogModule.NADK_LOG_MODULE_RENDER, true);
         NADKAppLog.setModuleLevel(NADKAppLogModule.NADK_LOG_MODULE_RENDER, NADKAppLogLevel.NADK_LOG_LEVEL_VERB);
         NADKAppLog.setModule(NADKAppLogModule.NADK_LOG_MODULE_APP, true);
         NADKAppLog.setModuleLevel(NADKAppLogModule.NADK_LOG_MODULE_APP, NADKAppLogLevel.NADK_LOG_LEVEL_VERB);

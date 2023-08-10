@@ -110,7 +110,7 @@ public class NADKConfig {
 
         if (signalingType == NADKSignalingType.NADK_SIGNALING_TYPE_BASE_TCP) {
             setupInfo.setSrtp(false);
-            setupInfo.setRtcpTwcc(false);
+            setupInfo.setRtcpTwcc(true);
         } else {
             setupInfo.setSrtp(getSrtp());
             setupInfo.setRtcpTwcc(getRtcpTwcc());

@@ -6,20 +6,15 @@ import android.content.res.Configuration;
 import android.graphics.Paint;
 import android.os.Bundle;
 import android.os.Handler;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
-import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -32,18 +27,13 @@ import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.ui.PlayerView;
 import com.google.android.exoplayer2.util.EventLogger;
 import com.google.android.exoplayer2.util.MimeTypes;
-import com.icatch.smarthome.am.aws.AmazonAwsUtil;
 import com.icatchtek.basecomponent.prompt.MyProgressDialog;
 import com.icatchtek.basecomponent.prompt.MyToast;
 import com.icatchtek.basecomponent.prompt.PercentageProgressDialog;
 import com.icatchtek.basecomponent.utils.ClickUtils;
 import com.icatchtek.baseutil.ThreadPoolUtils;
-import com.icatchtek.baseutil.date.DateConverter;
-import com.icatchtek.baseutil.date.DateUtil;
 import com.icatchtek.baseutil.device.MyOrientationEventListener;
 import com.icatchtek.baseutil.device.ScreenUtils;
-import com.icatchtek.baseutil.file.FileOper;
-import com.icatchtek.baseutil.file.FileUtil;
 import com.icatchtek.baseutil.imageloader.ImageLoaderConfig;
 import com.icatchtek.baseutil.info.SystemInfo;
 import com.icatchtek.baseutil.log.AppLog;
@@ -53,46 +43,32 @@ import com.icatchtek.nadk.playback.NADKPlaybackClient;
 import com.icatchtek.nadk.playback.NADKPlaybackClientListener;
 import com.icatchtek.nadk.playback.file.NADKFileTransferListener;
 import com.icatchtek.nadk.reliant.NADKException;
-import com.icatchtek.nadk.reliant.NADKNetAddress;
 import com.icatchtek.nadk.reliant.NADKSignalingType;
 import com.icatchtek.nadk.reliant.NADKWebrtcAuthentication;
 import com.icatchtek.nadk.reliant.NADKWebrtcSetupInfo;
-import com.icatchtek.nadk.reliant.datachannel.NADKDataChannel;
-import com.icatchtek.nadk.reliant.datachannel.NADKDataChannelListener;
-import com.icatchtek.nadk.reliant.parameter.NADKAudioParameter;
-import com.icatchtek.nadk.reliant.parameter.NADKVideoParameter;
 import com.icatchtek.nadk.reliant.parameter.NADKWebrtcStreamParameter;
 import com.icatchtek.nadk.show.assist.WebrtcLogStatusListener;
+import com.icatchtek.nadk.show.device.DeviceManager;
+import com.icatchtek.nadk.show.device.NADKLocalDevice;
 import com.icatchtek.nadk.show.imageloader.CustomImageDownloader;
-import com.icatchtek.nadk.show.kvsarchivedmedia.KVSArchivedMediaClient;
 import com.icatchtek.nadk.show.sdk.DeviceLocalFileListInfo;
 import com.icatchtek.nadk.show.sdk.FileDownloadStatusListener;
 import com.icatchtek.nadk.show.sdk.NADKPlaybackClientService;
-import com.icatchtek.nadk.show.utils.DatePickerHelper;
 import com.icatchtek.nadk.show.utils.NADKConfig;
-import com.icatchtek.nadk.show.utils.NetworkUtils;
 import com.icatchtek.nadk.show.wakeup.WakeUpThread;
 import com.icatchtek.nadk.webrtc.NADKWebrtc;
 import com.icatchtek.nadk.webrtc.NADKWebrtcClient;
 import com.icatchtek.nadk.webrtc.NADKWebrtcClientStatusListener;
 import com.icatchtek.nadk.webrtc.NADKWebrtcControl;
 import com.icatchtek.nadk.webrtc.assist.NADKAuthorization;
-import com.icatchtek.nadk.webrtc.assist.NADKWebrtcAppConfig;
-import com.icatchtek.nadk.webrtc.assist.NADKWebrtcServiceRoutines;
 import com.nostra13.universalimageloader.core.ImageLoader;
+import com.nostra13.universalimageloader.core.listener.PauseOnScrollListener;
 import com.tinyai.libmediacomponent.components.filelist.FileItemInfo;
-import com.tinyai.libmediacomponent.components.filelist.FileListView;
 import com.tinyai.libmediacomponent.components.filelist.FileListView2;
-import com.tinyai.libmediacomponent.components.filelist.OperationMode;
-import com.tinyai.libmediacomponent.components.filelist.PhotoWallLayoutType;
 import com.tinyai.libmediacomponent.components.filelist.RefreshMode;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -135,6 +111,7 @@ public class LocalPlaybackActivity extends AppCompatActivity {
     private static final String MEDIA_PATH = STORAGE_PATH;
     private static final String CACHE_PATH = STORAGE_PATH;
     private static final String LOCAL_FILE_PREFIX = "file://";
+    private String cachePath;
 
     private boolean masterRole = false;
     private NADKWebrtc webrtc;
@@ -147,13 +124,15 @@ public class LocalPlaybackActivity extends AppCompatActivity {
 
 
     private FileListView2 fileListView;
-    private List<FileItemInfo> fileItemInfoList;
+    private List<FileItemInfo> fileItemInfoList = new LinkedList<>();
     private DeviceLocalFileListInfo localFileListInfo = null;
     private NADKPlaybackClient playbackClient;
 
     private PercentageProgressDialog dialog;
 
     private WakeUpThread wakeUpThread;
+    private boolean isFromPV = false;
+    private NADKLocalDevice nadkLocalDevice;
 
 
     @Override
@@ -174,6 +153,7 @@ public class LocalPlaybackActivity extends AppCompatActivity {
 
         Intent intent = getIntent();
         signalingType = intent.getIntExtra("signalingType", NADKSignalingType.NADK_SIGNALING_TYPE_BASE_TCP);
+        isFromPV = intent.getBooleanExtra("isFromPV", false);
 
         initConnectionStatusUI();
         initFileList();
@@ -229,13 +209,28 @@ public class LocalPlaybackActivity extends AppCompatActivity {
         setPvLayout(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         initializePlayer();
 
-        initWebrtc();
-        ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
-            @Override
-            public void run() {
-                connect();
-            }
-        }, 200);
+
+
+        if (!isFromPV) {
+            initWebrtc();
+            ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
+                @Override
+                public void run() {
+                    connect();
+                }
+            }, 200);
+        } else {
+
+            nadkLocalDevice = DeviceManager.getInstance().getDevice(NADKConfig.getInstance().getLanModeAuthorization().getAccessKey());
+            playbackClient = nadkLocalDevice.getPlaybackClient();
+            ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
+                @Override
+                public void run() {
+                    initPlayback();
+                }
+            }, 200);
+
+        }
 
     }
 
@@ -559,11 +554,11 @@ public class LocalPlaybackActivity extends AppCompatActivity {
     }
 
     private String downloadFile(FileItemInfo itemInfo) {
-        String dstFile = STORAGE_PATH + "/" + itemInfo.getFileName();
-        File file = new File(dstFile);
-        if (file.exists()) {
-            return LOCAL_FILE_PREFIX + dstFile;
-        }
+        String dstFile = cachePath + "/" + itemInfo.getFileName();
+//        File file = new File(dstFile);
+//        if (file.exists()) {
+//            return LOCAL_FILE_PREFIX + dstFile;
+//        }
         if (localFileListInfo != null) {
 //            showDownloadDialog();
 
@@ -584,8 +579,8 @@ public class LocalPlaybackActivity extends AppCompatActivity {
                     if (fileSize == transferedSize) {
                         if (fileName != null && !fileName.isEmpty()) {
 //                            File srcFile = new File(fileName);
-                            createDirectory(STORAGE_PATH);
-                            FileUtil.copy(fileName, dstFile);
+//                            createDirectory(STORAGE_PATH);
+//                            FileUtil.copy(fileName, dstFile);
 //                            srcFile.renameTo(new File(dstFile));
                         }
                     }
@@ -611,8 +606,13 @@ public class LocalPlaybackActivity extends AppCompatActivity {
 
                 }
             }, 200);
+            return LOCAL_FILE_PREFIX + fileDownloadStatusListener.getFileName();
 
-            return fileDownloadStatusListener.getFileName();
+//            String filePath = localFileListInfo.downloadMediaFile(DeviceLocalFileListInfo.convertToNADKMediaFile(itemInfo), (NADKFileTransferListener) fileDownloadStatusListener);
+//            dismissDownloadDialog();
+//            File srcFile = new File(filePath);
+//            srcFile.renameTo(new File(dstFile));
+//            return LOCAL_FILE_PREFIX + dstFile;
 
         }
         return "";
@@ -833,13 +833,14 @@ public class LocalPlaybackActivity extends AppCompatActivity {
 //            this.initLogger(this.webrtc.getLogger(), masterRole);
 
             /* create playback based on webrtc */
-            String path = getExternalCacheDir().toString() + "/NADK";
-            createDirectory(path);
-            createDirectory(path);
+
+            cachePath = getExternalCacheDir().toString() + "/NADK";
+            createDirectory(cachePath);
+            createDirectory(cachePath);
 
 
             this.playback = NADKPlaybackAssist.createWebrtcPlayback(
-                    masterRole, path, path, this.webrtc);
+                    masterRole, cachePath, cachePath, this.webrtc);
 
 
             webrtc.addClientStatusListener(new WebrtcStatusListener());
@@ -896,13 +897,19 @@ public class LocalPlaybackActivity extends AppCompatActivity {
         AppLog.i(TAG, "stop viewer");
         /* destroy playback */
         try {
-            this.playback.destroy();
+            if (playback != null) {
+                this.playback.destroy();
+            }
+
         } catch (NADKException e) {
             e.printStackTrace();
         }
         /* destroy webrtc */
         try {
-            this.webrtc.destroyWebrtc();
+            if (webrtc != null) {
+                this.webrtc.destroyWebrtc();
+            }
+
         } catch (Exception ex)
         {
             ex.printStackTrace();
@@ -949,12 +956,16 @@ public class LocalPlaybackActivity extends AppCompatActivity {
             ImageLoaderConfig.initImageLoader(getApplicationContext(), downloader);
             ImageLoader.getInstance().destroy();
             ImageLoaderConfig.initImageLoader(getApplicationContext(), downloader);
+            fileListView.setOnScrollListener(new PauseOnScrollListener(ImageLoader.getInstance(), false, false));
 
             handler.post(new Runnable() {
                 @Override
                 public void run() {
 
                     if (fileItemInfoList != null) {
+                        fileListView.renderList(fileItemInfoList);
+                    } else {
+                        fileItemInfoList = new LinkedList<>();
                         fileListView.renderList(fileItemInfoList);
                     }
 
@@ -1032,17 +1043,17 @@ public class LocalPlaybackActivity extends AppCompatActivity {
         try {
             webrtcControl= NADKWebrtcControl.createControl(webrtcClient);
             AppLog.d(TAG, "createControl succeed");
-            webrtcControl.addDataChannelListener(new NADKDataChannelListener() {
-                @Override
-                public void onDataChannelCreated(NADKDataChannel dataChannel) {
-                    try {
-                        AppLog.d(TAG, "onDataChannelCreated: " + dataChannel.getChannelName());
-                    } catch (NADKException e) {
-                        e.printStackTrace();
-                    }
-
-                }
-            });
+//            webrtcControl.addDataChannelListener(new NADKDataChannelListener() {
+//                @Override
+//                public void onDataChannelCreated(NADKDataChannel dataChannel) {
+//                    try {
+//                        AppLog.d(TAG, "onDataChannelCreated: " + dataChannel.getChannelName());
+//                    } catch (NADKException e) {
+//                        e.printStackTrace();
+//                    }
+//
+//                }
+//            });
             AppLog.d(TAG, "addDataChannelListener succeed");
         } catch (NADKException e) {
             e.printStackTrace();

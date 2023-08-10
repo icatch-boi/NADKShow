@@ -21,6 +21,8 @@ import com.icatchtek.baseutil.log.AppLog;
 import com.icatchtek.baseutil.permission.PermissionTools;
 import com.icatchtek.nadk.reliant.NADKException;
 import com.icatchtek.nadk.reliant.NADKSignalingType;
+import com.icatchtek.nadk.show.device.DeviceManager;
+import com.icatchtek.nadk.show.device.NADKLocalDevice;
 import com.icatchtek.nadk.show.ssdp.SSDPSearchResponse;
 import com.icatchtek.nadk.show.ssdp.SearchUtils;
 import com.icatchtek.nadk.show.utils.NADKConfig;
@@ -182,6 +184,7 @@ public class LanModeActivity extends AppCompatActivity {
 
         NADKConfig.getInstance().setLanModeAuthorization(auth);
         NADKConfig.getInstance().serializeConfig();
+        DeviceManager.getInstance().addDevice(new NADKLocalDevice(auth.getAccessKey(), auth.getAccessKey(), auth.getAccessKey(), NADKLocalDevice.LOCAL_SIGNALING_DEFAULT_PORT, auth.getSecretKey(), auth.getChannelName()));
     }
 
 

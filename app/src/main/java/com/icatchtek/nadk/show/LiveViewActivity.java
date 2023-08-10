@@ -11,18 +11,24 @@ import android.os.Environment;
 import android.os.Handler;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.KeyEvent;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.icatchtek.basecomponent.utils.ClickUtils;
 import com.icatchtek.baseutil.ThreadPoolUtils;
@@ -30,11 +36,20 @@ import com.icatchtek.baseutil.device.MyOrientationEventListener;
 import com.icatchtek.baseutil.device.ScreenUtils;
 import com.icatchtek.baseutil.info.SystemInfo;
 import com.icatchtek.baseutil.log.AppLog;
+import com.icatchtek.nadk.playback.NADKPlayback;
+import com.icatchtek.nadk.playback.NADKPlaybackAssist;
+import com.icatchtek.nadk.playback.NADKPlaybackClient;
+import com.icatchtek.nadk.playback.NADKPlaybackClientListener;
+import com.icatchtek.nadk.playback.file.NADKFileStatusListener;
+import com.icatchtek.nadk.playback.impl.FileStatusListener;
+import com.icatchtek.nadk.playback.type.NADKMediaFile;
 import com.icatchtek.nadk.reliant.NADKException;
 import com.icatchtek.nadk.reliant.NADKNetAddress;
 import com.icatchtek.nadk.reliant.NADKSignalingType;
 import com.icatchtek.nadk.reliant.NADKWebrtcAuthentication;
 import com.icatchtek.nadk.reliant.NADKWebrtcSetupInfo;
+import com.icatchtek.nadk.reliant.datachannel.NADKDataChannel;
+import com.icatchtek.nadk.reliant.datachannel.NADKDataChannelListener;
 import com.icatchtek.nadk.reliant.event.NADKEvent;
 import com.icatchtek.nadk.reliant.event.NADKEventHandler;
 import com.icatchtek.nadk.reliant.event.NADKEventID;
@@ -44,6 +59,9 @@ import com.icatchtek.nadk.reliant.parameter.NADKVideoParameter;
 import com.icatchtek.nadk.reliant.parameter.NADKWebrtcStreamParameter;
 import com.icatchtek.nadk.show.assist.NADKStreamingClientAssist;
 import com.icatchtek.nadk.show.assist.WebrtcLogStatusListener;
+import com.icatchtek.nadk.show.device.DeviceManager;
+import com.icatchtek.nadk.show.device.NADKLocalDevice;
+import com.icatchtek.nadk.show.sdk.NADKPlaybackClientService;
 import com.icatchtek.nadk.show.utils.NADKConfig;
 import com.icatchtek.nadk.show.utils.NADKShowLog;
 import com.icatchtek.nadk.show.utils.NADKWebRtcAudioRecord;
@@ -56,11 +74,16 @@ import com.icatchtek.nadk.streaming.NADKStreaming;
 import com.icatchtek.nadk.streaming.NADKStreamingAssist;
 import com.icatchtek.nadk.streaming.NADKStreamingClientListener;
 import com.icatchtek.nadk.streaming.producer.NADKStreamingProducer;
+import com.icatchtek.nadk.streaming.render.gl.surface.NADKSurfaceContext;
 import com.icatchtek.nadk.streaming.render.gl.type.NADKGLColor;
 import com.icatchtek.nadk.streaming.render.gl.type.NADKGLDisplayPPI;
 import com.icatchtek.nadk.webrtc.NADKWebrtc;
+import com.icatchtek.nadk.webrtc.NADKWebrtcClient;
+import com.icatchtek.nadk.webrtc.NADKWebrtcClientStatusListener;
+import com.icatchtek.nadk.webrtc.NADKWebrtcControl;
 import com.icatchtek.nadk.webrtc.assist.NADKAuthorization;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -75,7 +98,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
-public class LiveViewActivity extends BaseWebrtcActivity
+public class LiveViewActivity extends AppCompatActivity
 {
     private static final String TAG = LiveViewActivity.class.getSimpleName();
 
@@ -97,6 +120,7 @@ public class LiveViewActivity extends BaseWebrtcActivity
     private ImageButton back_btn;
     private Button webrtc_btn;
     private Button talk_btn;
+    private ImageView talk_imv;
     private boolean prepareWebrtc = false;
     private boolean enableTalk = false;
     private boolean orientationIsVertical = true;
@@ -111,17 +135,37 @@ public class LiveViewActivity extends BaseWebrtcActivity
 
     private WakeUpThread wakeUpThread;
 
+    private NADKPlayback playback;
+    private NADKPlaybackClient playbackClient;
+    private NADKPlaybackClientService playbackClientService;
+    private Button playback_btn;
+    private ImageView playback_imv;
 
-    @Override
-    protected void setContentViewWhichHasSurfaceView1()
-    {
-        setContentView(R.layout.activity_live_view);
-    }
+    private NADKWebrtcClient webrtcClient;
+    private NADKWebrtcControl webrtcControl;
+
+    private NADKLocalDevice nadkLocalDevice;
+    private NADKStreamingClientListener clientListener;
+    private boolean isPlayback = false;
+
+
+    protected boolean surfaceReady = false;
+    protected NADKSurfaceContext surfaceContext;
+    protected RelativeLayout live_view_control_layout;
+    protected SurfaceView surfaceView;
+    private SurfaceHolder.Callback callback;
+
+    private RelativeLayout connect_loading_layout;
+    private ProgressBar connect_loading_bar;
+    private TextView connect_loading_txt;
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_live_view);
 
         RadioGroup radioGroup = findViewById(R.id.radioGroup);
 //        radioGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
@@ -195,44 +239,67 @@ public class LiveViewActivity extends BaseWebrtcActivity
             }
         });
 
+        playback_btn = findViewById(R.id.playb_btn);
+        playback_btn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+//                if (isPlayback) {
+//                    enableStreaming();
+//                    isPlayback = false;
+//                } else {
+//                    disableStreaming();
+//                    isPlayback = true;
+//                }
+                setTalk(false);
+                disableStreaming();
+                Intent intent = new Intent(LiveViewActivity.this, LocalPlaybackActivity.class);
+                intent.putExtra("signalingType", NADKSignalingType.NADK_SIGNALING_TYPE_BASE_TCP);
+                intent.putExtra("isFromPV", true);
+                startActivity(intent);
+            }
+        });
+        playback_btn.setEnabled(false);
+
+        playback_imv = findViewById(R.id.playback_imv);
+        playback_imv.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+//                if (isPlayback) {
+//                    enableStreaming();
+//                    isPlayback = false;
+//                } else {
+//                    disableStreaming();
+//                    isPlayback = true;
+//                }
+                setTalk(false);
+                disableStreaming();
+                Intent intent = new Intent(LiveViewActivity.this, LocalPlaybackActivity.class);
+                intent.putExtra("signalingType", NADKSignalingType.NADK_SIGNALING_TYPE_BASE_TCP);
+                intent.putExtra("isFromPV", true);
+                startActivity(intent);
+            }
+        });
+        playback_imv.setEnabled(false);
+
+        connect_loading_layout = (RelativeLayout) findViewById(R.id.connect_loading_layout);
+        connect_loading_bar = (ProgressBar) findViewById(R.id.connect_loading_bar);
+        connect_loading_txt = (TextView) findViewById(R.id.connect_loading_txt);
+
+        showConnectLoading("Connecting...");
+
+
         initView();
 
         Intent intent = getIntent();
         signalingType = intent.getIntExtra("signalingType", NADKSignalingType.NADK_SIGNALING_TYPE_KVS);
 
-        try
-        {
-            AppLog.i("LiveView", "Flow, createWebrtcStreaming start");
-            /* create webrtc */
-            this.webrtc = NADKWebrtc.create(this.masterRole);
-
-            NADKEventHandler eventHandler = webrtc.getEventHandler();
-
-            /* create streaming based on webrtc */
-            this.streaming = NADKStreamingAssist.createWebrtcStreaming(this.webrtc);
-            registerStreamingListener();
-
-            /* init logger */
-//            this.initLogger(this.webrtc.getLogger(), masterRole);
-
-            /* add a status listener, we want to upload file log after all
-             * webrtc session disconnected. */
-            webrtc.addActiveClientListener(
-                new WebrtcLogStatusListener(webrtc.getLogger(),
-               "android", masterRole ? "master" : "viewer"));
-            AppLog.i("LiveView", "Flow, createWebrtcStreaming end");
-        }
-        catch(Exception ex) {
-            ex.printStackTrace();
-            AppLog.e("LiveView", "Flow, createWebrtcStreaming end, Exception: " + ex.getMessage());
-        }
-
-        checkPermission();
+//        checkPermission();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+//        enableStreaming();
         initSurface(streamingRender);
     }
 
@@ -261,6 +328,21 @@ public class LiveViewActivity extends BaseWebrtcActivity
         fullscreen_switch = findViewById(R.id.exo_fullscreen);
         topbar = findViewById(R.id.exo_top_bar);
         topbar_back = findViewById(R.id.exo_top_bar_back);
+
+        live_view_control_layout = findViewById(R.id.live_view_control_layout);
+        surfaceView = findViewById(R.id.surfaceView1);
+        surfaceView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (live_view_control_layout.getVisibility() == View.VISIBLE) {
+                    live_view_control_layout.setVisibility(View.GONE);
+                } else {
+                    live_view_control_layout.setVisibility(View.VISIBLE);
+                }
+            }
+        });
+
+        initSurface(null);
 
         fullscreen_switch.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -297,7 +379,27 @@ public class LiveViewActivity extends BaseWebrtcActivity
                     AppLog.i(TAG, "isFastDoubleClick the v.id=" + v.getId());
                     return;
                 }
-                setTalk();
+                if (enableTalk) {
+                    setTalk(false);
+                } else {
+                    setTalk(true);
+                }
+            }
+        });
+
+        talk_imv = findViewById(R.id.talk_imv);
+        talk_imv.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(ClickUtils.isFastDoubleClick(v)){
+                    AppLog.i(TAG, "isFastDoubleClick the v.id=" + v.getId());
+                    return;
+                }
+                if (enableTalk) {
+                    setTalk(false);
+                } else {
+                    setTalk(true);
+                }
             }
         });
 
@@ -331,6 +433,81 @@ public class LiveViewActivity extends BaseWebrtcActivity
         });
 
         setPvLayout(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+
+    }
+
+    public void showConnectLoading(String msg) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                connect_loading_txt.setText(msg);
+                connect_loading_layout.setVisibility(View.VISIBLE);
+            }
+        });
+    }
+
+    public void closeConnectLoading() {
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                connect_loading_layout.setVisibility(View.GONE);
+            }
+        });
+
+    }
+
+    protected void initSurface(NADKStreamingRender render) {
+        Log.i("__render__", "initSurface: ");
+        if (callback != null) {
+            surfaceView.getHolder().removeCallback(callback);
+        }
+
+        callback = new SurfaceHolder.Callback() {
+            @Override
+            public void surfaceCreated(SurfaceHolder holder) {
+                AppLog.i("LiveView", "Flow, surfaceReady");
+                surfaceContext = new NADKSurfaceContext(surfaceView.getHolder().getSurface());
+                if (!surfaceReady) {
+                    surfaceReady = true;
+                    ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            initWebrtc();
+                        }
+                    }, 200);
+
+                }
+
+                if (render != null) {
+                    try {
+                        render.changeSurfaceContext(surfaceContext);
+                    } catch (NADKException e) {
+                        e.printStackTrace();
+                    }
+                }
+                enableStreaming();
+                Log.i("__render__", "surface available: " + surfaceContext);
+            }
+
+            @Override
+            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height)
+            {
+                try {
+                    surfaceContext.setViewPort(0, 0, width, height);
+                    Log.i("__render__", "surface changed: " + surfaceContext);
+                } catch (NADKException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            @Override
+            public void surfaceDestroyed(SurfaceHolder holder) {
+//                surfaceReady = false;
+//                disableStreaming();
+                Log.i("__render__", "surface destroyed: ");
+            }
+        };
+        surfaceView.getHolder().addCallback(callback);
 
     }
 
@@ -397,6 +574,131 @@ public class LiveViewActivity extends BaseWebrtcActivity
         }
     }
 
+    private boolean initWebrtc() {
+
+        nadkLocalDevice = DeviceManager.getInstance().getDevice(NADKConfig.getInstance().getLanModeAuthorization().getAccessKey());
+        if (nadkLocalDevice != null) {
+            nadkLocalDevice.setPlaybackClient(null);
+        }
+
+        try
+        {
+            AppLog.i("LiveView", "Flow, createWebrtcStreaming start");
+            /* create webrtc */
+            this.webrtc = NADKWebrtc.create(this.masterRole);
+
+            /* create streaming based on webrtc */
+            this.streaming = NADKStreamingAssist.createWebrtcStreaming(this.webrtc);
+            registerStreamingListener();
+
+
+            /* create playback based on webrtc */
+            String path = getExternalCacheDir().toString() + "/NADK";
+            createDirectory(path);
+            createDirectory(path);
+
+
+            this.playback = NADKPlaybackAssist.createWebrtcPlayback(
+                    masterRole, path, path, this.webrtc);
+
+
+            webrtc.addClientStatusListener(new WebrtcStatusListener());
+
+            /* init logger */
+//            this.initLogger(this.webrtc.getLogger(), masterRole);
+
+            /* add a status listener, we want to upload file log after all
+             * webrtc session disconnected. */
+            webrtc.addActiveClientListener(
+                    new WebrtcLogStatusListener(webrtc.getLogger(),
+                            "android", masterRole ? "master" : "viewer"));
+            AppLog.i("LiveView", "Flow, createWebrtcStreaming end");
+
+            setWebrtc();
+        }
+        catch(Exception ex) {
+            ex.printStackTrace();
+            AppLog.e("LiveView", "Flow, createWebrtcStreaming end, Exception: " + ex.getMessage());
+        }
+
+
+        return true;
+    }
+
+    private void prepareRender() {
+        try {
+
+            if (streamingRender == null) {
+//                if (this.surfaceContext != null)
+//                {
+                    DisplayMetrics displayMetrics = Resources.getSystem().getDisplayMetrics();
+                    NADKGLDisplayPPI displayPPI = new NADKGLDisplayPPI(displayMetrics.xdpi, displayMetrics.ydpi);
+                    streamingRender = NADKStreamingRender.createTextureRender(
+                            webrtc.getLogger(),
+                            webrtc.getEventHandler(),
+                            NADKGLColor.BLACK, displayPPI, this.surfaceContext);
+//                }
+//                else
+//                {
+//                    streamingRender = NADKStreamingRender.createConsoleRender(
+//                            webrtc.getLogger(),
+//                            webrtc.getEventHandler());
+//                }
+            }
+            AppLog.i("LiveView", "Flow, prepareRender end");
+
+            /* create a streaming client listener,
+             * the streaming client will be used to send/receive media frames */
+            if (clientListener == null) {
+                NADKStreamingProducer streamingProducer = NADKStreamingProducer.createFileStreamingProducer();
+                clientListener = new NADKStreamingClientAssist(
+                        webrtc.getLogger(),
+                        webrtc.getEventHandler(),
+                        (masterRole) ? null : streamingRender,
+                        (masterRole) ? streamingProducer : null, new NADKStreamingClientListener() {
+                    @Override
+                    public void created(NADKStreamingClient streamingClient) {
+
+                    }
+
+                    @Override
+                    public void destroyed(NADKStreamingClient streamingClient) {
+
+                    }
+
+                    @Override
+                    public void connected(NADKStreamingClient streamingClient) {
+                        initTalk(streamingClient);
+                    }
+
+                    @Override
+                    public void disconnected(NADKStreamingClient streamingClient) {
+
+                    }
+
+                    @Override
+                    public void streamingEnabled(NADKStreamingClient streamingClient, NADKAudioParameter audioParameter, NADKVideoParameter videoParameter) {
+
+                    }
+
+                    @Override
+                    public void streamingDisabled(NADKStreamingClient streamingClient) {
+
+                    }
+
+                });
+            }
+
+            if (streamParameter == null) {
+                this.streamParameter = new NADKWebrtcStreamParameter();
+            }
+
+            this.streaming.prepare(this.streamParameter, clientListener);
+        } catch (NADKException e) {
+            e.printStackTrace();
+        }
+    }
+
     private boolean prepareWebrtc()
     {
         startWakeup();
@@ -404,65 +706,13 @@ public class LiveViewActivity extends BaseWebrtcActivity
         try
         {
             AppLog.i("LiveView", "Flow, prepareRender start");
-            if (this.surfaceContext != null)
-            {
-                DisplayMetrics displayMetrics = Resources.getSystem().getDisplayMetrics();
-                NADKGLDisplayPPI displayPPI = new NADKGLDisplayPPI(displayMetrics.xdpi, displayMetrics.ydpi);
-                streamingRender = NADKStreamingRender.createTextureRender(
-                        webrtc.getLogger(),
-                        webrtc.getEventHandler(),
-                        NADKGLColor.BLACK, displayPPI, this.surfaceContext);
-            }
-            else
-            {
-                streamingRender = NADKStreamingRender.createConsoleRender(
-                        webrtc.getLogger(),
-                        webrtc.getEventHandler());
-            }
-            AppLog.i("LiveView", "Flow, prepareRender end");
+            prepareRender();
 
-            /* create a streaming client listener,
-             * the streaming client will be used to send/receive media frames */
-            NADKStreamingProducer streamingProducer = NADKStreamingProducer.createFileStreamingProducer();
-            NADKStreamingClientListener clientListener = new NADKStreamingClientAssist(
-                    webrtc.getLogger(),
-                    webrtc.getEventHandler(),
-                    (masterRole) ? null : streamingRender,
-                    (masterRole) ? streamingProducer : null, new NADKStreamingClientListener() {
-                @Override
-                public void created(NADKStreamingClient streamingClient) {
+            /* create a playback client listener,
+             * the playback client will be used to send/receive media frames */
+            playbackClientService = new NADKPlaybackClientService(this.masterRole, new LocalPlaybackClientListener());
+            this.playback.prepare(playbackClientService);
 
-                }
-
-                @Override
-                public void destroyed(NADKStreamingClient streamingClient) {
-
-                }
-
-                @Override
-                public void connected(NADKStreamingClient streamingClient) {
-                    initTalk(streamingClient);
-                }
-
-                @Override
-                public void disconnected(NADKStreamingClient streamingClient) {
-
-                }
-
-                @Override
-                public void streamingEnabled(NADKStreamingClient streamingClient, NADKAudioParameter audioParameter, NADKVideoParameter videoParameter) {
-
-                }
-
-                @Override
-                public void streamingDisabled(NADKStreamingClient streamingClient) {
-
-                }
-
-            });
-
-            this.streamParameter = new NADKWebrtcStreamParameter();
-            this.streaming.prepare(this.streamParameter, clientListener);
 
             /* prepare webrtc client*/
 
@@ -484,6 +734,14 @@ public class LiveViewActivity extends BaseWebrtcActivity
         catch(NADKException ex) {
             ex.printStackTrace();
             AppLog.e("LiveView", "Flow, startWebrtcStreaming end, Exception: " + ex.getClass().getSimpleName() + ", error: " + ex.getMessage());
+            closeConnectLoading();
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(LiveViewActivity.this, "NADK_EVENT_WEBRTC_SIGNALING_PEER_DISCONNECTED", Toast.LENGTH_SHORT).show();
+
+                }
+            });
 
         }
 
@@ -497,34 +755,39 @@ public class LiveViewActivity extends BaseWebrtcActivity
 
         stopWakeup();
 
+        if (nadkLocalDevice != null) {
+            nadkLocalDevice.setPlaybackClient(null);
+        }
+
         enableTalk = false;
         talk_btn.setText("Enable Talk");
 
         prepareWebrtc = false;
         webrtc_btn.setText("Prepare Webrtc");
 
-
-        try
-        {
+        try {
             if (streamingRender != null) {
                 this.streamingRender.destroyRender();
                 this.streamingRender.stopStreaming();
                 streamingRender = null;
             }
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             ex.printStackTrace();
-//            return false;
         }
 
-        /* destroy streaming */
+        disableStreaming();
+
+
+        /* destroy playback */
         try {
-            streaming.destroy();
+            if (playback != null) {
+                this.playback.destroy();
+            }
 
         } catch (NADKException e) {
             e.printStackTrace();
         }
+
         /* destroy webrtc */
         try {
             webrtc.destroyWebrtc();
@@ -545,9 +808,31 @@ public class LiveViewActivity extends BaseWebrtcActivity
             audioManager = null;
         }
 
+        this.playbackClientService = null;
+        this.playbackClient = null;
+
         AppLog.reInitLog();
 
         return true;
+    }
+
+    private void enableStreaming() {
+        if (clientListener != null) {
+            prepareRender();
+        }
+    }
+
+    private void disableStreaming() {
+
+        /* destroy streaming */
+        try {
+            if (streaming != null) {
+                streaming.destroy();
+            }
+        } catch (NADKException e) {
+            e.printStackTrace();
+        }
+
     }
 
     private void registerStreamingListener() {
@@ -650,6 +935,8 @@ public class LiveViewActivity extends BaseWebrtcActivity
                     @Override
                     public void run() {
                         Toast.makeText(LiveViewActivity.this, finalStatus, Toast.LENGTH_SHORT).show();
+                        showConnectLoading("Receiving Frame");
+
                     }
                 });
 
@@ -667,13 +954,16 @@ public class LiveViewActivity extends BaseWebrtcActivity
                     @Override
                     public void run() {
                         Toast.makeText(LiveViewActivity.this, finalStatus, Toast.LENGTH_SHORT).show();
+
                     }
                 });
+                closeConnectLoading();
 
 
             } else if (event.getEventID() == NADKEventID.NADK_EVENT_FIRST_VIDEO_FRAME_RENDERED) {
                 status = "NADK_EVENT_FIRST_VIDEO_FRAME_RENDERED";
                 AppLog.i("LiveView", "Flow, NADK_EVENT_FIRST_VIDEO_FRAME_RENDERED");
+                closeConnectLoading();
 
 
             } else if (event.getEventID() == NADKEventID.NADK_EVENT_FIRST_AUDIO_FRAME_RENDERED) {
@@ -731,48 +1021,57 @@ public class LiveViewActivity extends BaseWebrtcActivity
 
     private void setWebrtc() {
         if (prepareWebrtc) {
-            if (nadkWebRtcAudioRecord != null) {
-                nadkWebRtcAudioRecord.setMicrophoneMute(true);
-            }
-            enableTalk = false;
-            talk_btn.setText("Enable Talk");
 
             destroyWebrtc();
             prepareWebrtc = false;
-            webrtc_btn.setText("Prepare Webrtc");
+
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    setTalk(false);
+                    webrtc_btn.setText("Prepare Webrtc");
+                }
+            });
 
         } else {
             AppLog.i("LiveView", "Flow, Click Play");
             /* surface must be available */
-            if (!surfaceReady) {
-                Toast.makeText(LiveViewActivity.this,
-                        "The surface unavailable, please wait", Toast.LENGTH_LONG).show();
-                return;
-            }
+//            if (!surfaceReady) {
+//                Toast.makeText(LiveViewActivity.this,
+//                        "The surface unavailable, please wait", Toast.LENGTH_LONG).show();
+//                return;
+//            }
 
             /* prepare viewer */
             boolean retVal = prepareWebrtc();
             AppLog.i("main", "prepare webrtc: " + retVal);
             if (retVal) {
                 prepareWebrtc = true;
-                webrtc_btn.setText("Destroy Webrtc");
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        webrtc_btn.setText("Destroy Webrtc");
+                    }
+                });
             }
         }
     }
 
-    private void setTalk() {
-        if (enableTalk) {
+    private void setTalk(boolean enableTalk) {
+        if (!enableTalk) {
             if (nadkWebRtcAudioRecord != null) {
                 nadkWebRtcAudioRecord.setMicrophoneMute(true);
-                enableTalk = false;
+                this.enableTalk = false;
                 talk_btn.setText("Enable Talk");
+                talk_imv.setImageResource(R.drawable.selector_mic_off_btn);
             }
 
         } else {
             if (nadkWebRtcAudioRecord != null) {
                 nadkWebRtcAudioRecord.setMicrophoneMute(false);
-                enableTalk = true;
+                this.enableTalk = true;
                 talk_btn.setText("Disable Talk");
+                talk_imv.setImageResource(R.drawable.selector_mic_on_btn);
             }
 
         }
@@ -853,4 +1152,111 @@ public class LiveViewActivity extends BaseWebrtcActivity
         }
     }
 
+
+    private class LocalPlaybackClientListener implements NADKPlaybackClientListener {
+
+        @Override
+        public void connected(NADKPlaybackClient mplaybackClient) {
+            playbackClient = mplaybackClient;
+            AppLog.d(TAG, "LocalPlaybackClientListener connected: " + playbackClient);
+            try {
+                playbackClient.setFileStatusListener(new NADKFileStatusListener() {
+                    @Override
+                    public void fileAdded(NADKMediaFile mediaFile) {
+                        AppLog.d(TAG, "NADKFileStatusListener fileAdded: " + mediaFile.toString());
+
+                    }
+
+                    @Override
+                    public void fileRemoved(NADKMediaFile mediaFile) {
+                        AppLog.d(TAG, "NADKFileStatusListener fileRemoved: " + mediaFile.toString());
+
+                    }
+                });
+            } catch (NADKException e) {
+                e.printStackTrace();
+            }
+            nadkLocalDevice.setPlaybackClient(playbackClient);
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    playback_btn.setEnabled(true);
+                    playback_imv.setEnabled(true);
+                }
+            });
+
+        }
+
+        @Override
+        public void disconnected(NADKPlaybackClient playbackClient) {
+            AppLog.d(TAG, "LocalPlaybackClientListener disconnected: " + playbackClient);
+            nadkLocalDevice.setPlaybackClient(null);
+        }
+    }
+
+    private class WebrtcStatusListener implements NADKWebrtcClientStatusListener {
+
+        @Override
+        public void created(NADKWebrtcClient webrtcClient) {
+            initWebrtcControl(webrtcClient);
+
+        }
+
+        @Override
+        public void destroyed(NADKWebrtcClient webrtcClient) {
+
+
+        }
+
+        @Override
+        public void connected(NADKWebrtcClient webrtcClient) {
+            stopWakeup();
+
+//            initWebrtcControl(webrtcClient);
+        }
+
+        @Override
+        public void disconnected(NADKWebrtcClient webrtcClient) {
+
+
+        }
+
+    }
+
+    private void initWebrtcControl(NADKWebrtcClient webrtcClient) {
+        this.webrtcClient = webrtcClient;
+        try {
+            webrtcControl= NADKWebrtcControl.createControl(webrtcClient);
+            AppLog.d(TAG, "createControl succeed");
+            webrtcControl.addDataChannelListener("USER_DC_0", new NADKDataChannelListener() {
+                @Override
+                public void onDataChannelCreated(NADKDataChannel dataChannel) {
+                    try {
+                        AppLog.d(TAG, "onDataChannelCreated: " + dataChannel.getChannelName());
+                    } catch (NADKException e) {
+                        e.printStackTrace();
+                    }
+
+                }
+            });
+            AppLog.d(TAG, "addDataChannelListener succeed");
+        } catch (NADKException e) {
+            e.printStackTrace();
+            AppLog.d(TAG, "initWebrtcControl: " + e.getMessage());
+        }
+
+    }
+
+
+    private void createDirectory(String directoryPath) {
+        if (directoryPath != null) {
+            File directory = new File(directoryPath);
+            if (!directory.exists()) {
+                boolean ret = directory.mkdirs();
+                AppLog.d(TAG, "createDirectory: " + directoryPath + ", ret = " + ret);
+            } else {
+                AppLog.d(TAG, "createDirectory: " + directoryPath + ", directory exists");
+            }
+        }
+    }
 }

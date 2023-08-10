@@ -9,11 +9,11 @@ import com.icatchtek.nadk.streaming.render.NADKStreamingRender;
 import com.icatchtek.nadk.streaming.NADKStreamingClient;
 import com.icatchtek.nadk.streaming.NADKStreamingClientListener;
 import com.icatchtek.nadk.streaming.producer.NADKStreamingProducer;
-import com.icatchtek.nadk.show.assist.impl.NADKStreamingClientAssistImpl;
+import com.icatchtek.nadk.show.assist.impl.StreamingClientAssistImpl;
 
 public class NADKStreamingClientAssist implements NADKStreamingClientListener
 {
-    private final NADKStreamingClientAssistImpl clientAssistImpl;
+    private final StreamingClientAssistImpl clientAssistImpl;
     private NADKStreamingClientListener streamingClientListener;
 
     public NADKStreamingClientAssist(
@@ -21,7 +21,7 @@ public class NADKStreamingClientAssist implements NADKStreamingClientListener
             NADKEventHandler eventHandler,
             NADKStreamingRender streamingRender,
             NADKStreamingProducer streamingProducer, NADKStreamingClientListener nadkStreamingClientListener) {
-        this.clientAssistImpl = new NADKStreamingClientAssistImpl(
+        this.clientAssistImpl = new StreamingClientAssistImpl(
                 logger, eventHandler, streamingRender, streamingProducer);
         this.streamingClientListener = nadkStreamingClientListener;
     }

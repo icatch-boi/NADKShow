@@ -1,6 +1,7 @@
 package com.icatchtek.nadk.show.device;
 
 import com.icatchtek.baseutil.RandomString;
+import com.icatchtek.nadk.playback.NADKPlaybackClient;
 import com.icatchtek.nadk.webrtc.assist.NADKAuthorization;
 
 /**
@@ -15,6 +16,8 @@ public class NADKLocalDevice {
     private int port;
     private String mac;
     private String channelName;
+
+    private NADKPlaybackClient playbackClient;
 
 
     public NADKLocalDevice(String deviceId, String deviceName, String ip, int port, String mac, String channelName) {
@@ -65,4 +68,11 @@ public class NADKLocalDevice {
         return authorization;
     }
 
+    public NADKPlaybackClient getPlaybackClient() {
+        return playbackClient;
+    }
+
+    public void setPlaybackClient(NADKPlaybackClient playbackClient) {
+        this.playbackClient = playbackClient;
+    }
 }

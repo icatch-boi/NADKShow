@@ -56,7 +56,7 @@ public class DeviceLocalFileListInfo {
         } else {
             if (playbackClient != null) {
                 NADKDateTime headTime = convertToNADKDateTime(new Date(fileInfoList.get(0).getTime()  + 1000));
-                NADKDateTime tailTime = convertToNADKDateTime(setEndTimeOfDay(new Date()));;
+                NADKDateTime tailTime = convertToNADKDateTime(new Date());
                 List<NADKMediaFile> deviceFileInfoList = playbackClient.getMediaFiles(headTime, tailTime);
                 if (deviceFileInfoList != null) {
                     List<FileItemInfo> fileItemInfoList = convertToFileItemInfoList(deviceFileInfoList);
@@ -74,7 +74,7 @@ public class DeviceLocalFileListInfo {
         if (this.fileInfoList.isEmpty()) {
             if (playbackClient != null) {
                 NADKDateTime headTime = convertToNADKDateTime(startTimeOfList);
-                NADKDateTime tailTime = convertToNADKDateTime(endTimeOfList);;
+                NADKDateTime tailTime = convertToNADKDateTime(endTimeOfList);
                 List<NADKMediaFile> deviceFileInfoList = playbackClient.getMediaFiles(headTime, tailTime, 0, FIRST_GET_FILE_COUNT);
                 if (deviceFileInfoList != null) {
                     List<FileItemInfo> fileItemInfoList = convertToFileItemInfoList(deviceFileInfoList);
@@ -88,7 +88,7 @@ public class DeviceLocalFileListInfo {
             if (playbackClient != null) {
                 NADKDateTime headTime = convertToNADKDateTime(startTimeOfList);
                 int listSize = fileInfoList.size();
-                NADKDateTime tailTime = convertToNADKDateTime(new Date(fileInfoList.get(listSize - 1).getTime() - 1000));;
+                NADKDateTime tailTime = convertToNADKDateTime(new Date(fileInfoList.get(listSize - 1).getTime() - 1000));
                 List<NADKMediaFile> deviceFileInfoList = playbackClient.getMediaFiles(headTime, tailTime, 0, FIRST_GET_FILE_COUNT);
                 if (deviceFileInfoList != null) {
                     List<FileItemInfo> fileItemInfoList = convertToFileItemInfoList(deviceFileInfoList);

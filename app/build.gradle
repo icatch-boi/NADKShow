@@ -67,7 +67,7 @@ dependencies {
     api files('libs/shaccountmanagementjavasdk-v3.1.19.aar')
     api files('libs/canlendarviewlibrary.aar')
     api files('libs/pulltorefreshlibrary.aar')
-    api files('libs/libmediacomponent-debug_0.0.1.aar')
+    api files('libs/libmediacomponent-debug_0.0.2.aar')
 
     api 'com.google.android.exoplayer:exoplayer-core:2.14.1'
     api 'com.google.android.exoplayer:exoplayer-dash:2.14.1'

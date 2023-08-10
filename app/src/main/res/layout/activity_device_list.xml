@@ -30,15 +30,24 @@
                 android:layout_centerInParent="true"
                 android:text="Device" />
 
-            <TextView
+<!--            <TextView-->
+<!--                android:id="@+id/search_btn"-->
+<!--                style="@style/navigationTextviewPrimary"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_marginLeft="16dp"-->
+<!--                android:layout_marginRight="16dp"-->
+<!--                android:layout_alignParentRight="true"-->
+<!--                android:text="Search" />-->
+            <ImageView
                 android:id="@+id/search_btn"
-                style="@style/navigationTextviewPrimary"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginLeft="16dp"
                 android:layout_marginRight="16dp"
                 android:layout_alignParentRight="true"
-                android:text="Search" />
+                android:layout_centerVertical="true"
+                android:src="@mipmap/nav_refresh" />
 
         </RelativeLayout>
 

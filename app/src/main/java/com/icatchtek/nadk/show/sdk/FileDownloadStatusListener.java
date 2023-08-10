@@ -20,9 +20,7 @@ public class FileDownloadStatusListener implements NADKFileTransferListener
     public void transferStarted(String fileName, long fileSize) {
         this.fileName = fileName;
         this.fileSize = fileSize;
-        synchronized (lock) {
-            lock.notifyAll();
-        }
+
         if (nadkFileTransferListener != null) {
             nadkFileTransferListener.transferStarted(fileName, fileSize);
         }
@@ -31,6 +29,9 @@ public class FileDownloadStatusListener implements NADKFileTransferListener
 
     @Override
     public void transferFinished(long transferedSize) {
+        synchronized (lock) {
+            lock.notifyAll();
+        }
         if (nadkFileTransferListener != null) {
             nadkFileTransferListener.transferFinished(transferedSize);
         }
@@ -50,7 +51,7 @@ public class FileDownloadStatusListener implements NADKFileTransferListener
     public String getFileName() {
         synchronized (lock) {
             try {
-                lock.wait(5000);
+                lock.wait(500);
 
             } catch (InterruptedException e) {
                 e.printStackTrace();

@@ -6,6 +6,7 @@ import android.os.Handler;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
@@ -36,7 +37,7 @@ public class DeviceListActivity extends AppCompatActivity {
     private RelativeLayout device_list_layout;
     private RelativeLayout top_bar_layout;
     private ImageButton back_btn;
-    private TextView search_btn;
+    private ImageView search_btn;
     private LocalDeviceListView deviceListView;
     private List<DeviceItem> deviceItemList;
 
