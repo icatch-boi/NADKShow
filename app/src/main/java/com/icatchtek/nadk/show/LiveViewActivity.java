@@ -56,6 +56,7 @@ import com.icatchtek.nadk.show.assist.NADKStreamingClientAssist;
 import com.icatchtek.nadk.show.assist.WebrtcLogStatusListener;
 import com.icatchtek.nadk.show.device.DeviceManager;
 import com.icatchtek.nadk.show.device.NADKLocalDevice;
+import com.icatchtek.nadk.show.sdk.H264FileStreamingClient;
 import com.icatchtek.nadk.show.sdk.NADKPlaybackClientService;
 import com.icatchtek.nadk.show.utils.NADKConfig;
 import com.icatchtek.nadk.show.utils.NADKShowLog;
@@ -142,6 +143,19 @@ public class LiveViewActivity extends NADKShowBaseActivity
     private ProgressBar connect_loading_bar;
     private TextView connect_loading_txt;
 
+    private RelativeLayout pre_rolling_layout;
+    private RelativeLayout pre_rolling_tips_layout;
+    private SurfaceView pre_rolling_surface_view;
+    private ImageView pre_rolling_cancel;
+    private TextView pre_rolling_tips;
+    private ImageView live_icon;
+    private RelativeLayout repeat_icon_layout;
+    protected NADKSurfaceContext preRollingSurfaceContext;
+    private SurfaceHolder.Callback preRollingCallback;
+    private NADKStreamingRender preRollingStreamingRender;
+    private boolean isSwappedFeeds = false;
+    private boolean isPlayPreRolling = false;
+
 
 
     @Override
@@ -150,7 +164,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_live_view);
 
-        RadioGroup radioGroup = findViewById(R.id.radioGroup);
+//        RadioGroup radioGroup = findViewById(R.id.radioGroup);
 //        radioGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
 //            @Override
 //            public void onCheckedChanged(RadioGroup radioGroup, int checkedID)
@@ -165,8 +179,8 @@ public class LiveViewActivity extends NADKShowBaseActivity
 //        });
 
         /* viewer checked as default */
-        RadioButton radioViewer = findViewById(R.id.radio_viewer);
-        radioViewer.setChecked(true);
+//        RadioButton radioViewer = findViewById(R.id.radio_viewer);
+//        radioViewer.setChecked(true);
 
         Button btnPermission = findViewById(R.id.btnPermission);
         btnPermission.setOnClickListener(new View.OnClickListener() {
@@ -284,6 +298,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
         super.onResume();
 //        enableStreaming();
         initSurface(streamingRender);
+        initPreRollingSurface(preRollingStreamingRender);
     }
 
     private void initActivityCfg() {
@@ -415,6 +430,8 @@ public class LiveViewActivity extends NADKShowBaseActivity
             }
         });
 
+        initPreRolling();
+
         setPvLayout(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
     }
@@ -439,8 +456,250 @@ public class LiveViewActivity extends NADKShowBaseActivity
 
     }
 
+    private void initPreRolling() {
+        pre_rolling_surface_view = findViewById(R.id.pre_rolling_surface_view);
+        pre_rolling_layout = findViewById(R.id.pre_rolling_layout);
+        pre_rolling_tips_layout = findViewById(R.id.pre_rolling_tips_layout);
+        pre_rolling_cancel = findViewById(R.id.pre_rolling_cancel);
+        pre_rolling_tips = findViewById(R.id.pre_rolling_tips);
+        live_icon = findViewById(R.id.live_icon);
+        repeat_icon_layout = findViewById(R.id.repeat_icon_layout);
+        initPreRollingSurface(null);
+
+
+        pre_rolling_surface_view.setOnClickListener(v -> {
+            if(ClickUtils.isFastDoubleClick(v)){
+                AppLog.i(TAG, "isFastDoubleClick the v.id=" + v.getId());
+                return;
+            }
+            setSwappedFeeds(!isSwappedFeeds);
+        });
+
+        pre_rolling_cancel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(ClickUtils.isFastDoubleClick(v)){
+                    AppLog.i(TAG, "isFastDoubleClick the v.id=" + v.getId());
+                    return;
+                }
+                pre_rolling_layout.setVisibility(View.GONE);
+                pre_rolling_surface_view.setVisibility(View.GONE);
+//                new Thread(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        try {
+//                            videoCapturer.stopCapture();
+//                        } catch (InterruptedException e) {
+//                            e.printStackTrace();
+//                        }
+//                    }
+//                }).start();
+
+
+            }
+        });
+
+        pre_rolling_tips_layout.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(ClickUtils.isFastDoubleClick(v)){
+                    AppLog.i(TAG, "isFastDoubleClick the v.id=" + v.getId());
+                    return;
+                }
+                if (pre_rolling_surface_view.getVisibility() == View.GONE && !isPlayPreRolling) {
+                    isPlayPreRolling = true;
+//                    videoCapturer.startCapture(VIDEO_SIZE_WIDTH, VIDEO_SIZE_HEIGHT, VIDEO_FPS);
+
+                }
+            }
+        });
+        pre_rolling_surface_view.setEnabled(true);
+        pre_rolling_surface_view.setZOrderMediaOverlay(true);
+
+    }
+
+    private void initPreRollingRender() {
+        ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
+            @Override
+            public void run() {
+                DisplayMetrics displayMetrics = Resources.getSystem().getDisplayMetrics();
+                NADKGLDisplayPPI displayPPI = new NADKGLDisplayPPI(displayMetrics.xdpi, displayMetrics.ydpi);
+                NADKStreamingClient preRollingClient = new H264FileStreamingClient();
+                try {
+                    preRollingStreamingRender = NADKStreamingRender.createTextureRender(
+                            webrtc.getLogger(),
+                            webrtc.getEventHandler(),
+                            NADKGLColor.BLACK, displayPPI, preRollingSurfaceContext);
+                    preRollingStreamingRender.prepareRender();
+                    preRollingStreamingRender.startStreaming(preRollingClient);
+
+                } catch (NADKException e) {
+                    e.printStackTrace();
+
+                }
+
+            }
+        }, 200);
+
+    }
+
+    private void setSwappedFeeds(boolean isSwappedFeeds) {
+        if (isSwappedFeeds) {
+            if (repeat_icon_layout.getVisibility() == View.VISIBLE) {
+                return;
+            }
+            pre_rolling_cancel.setVisibility(View.GONE);
+            pre_rolling_tips.setText("Live");
+            live_icon.setVisibility(View.VISIBLE);
+            repeat_icon_layout.setVisibility(View.GONE);
+        } else {
+            pre_rolling_cancel.setVisibility(View.VISIBLE);
+            pre_rolling_tips.setText("Pre-Rolling");
+            live_icon.setVisibility(View.GONE);
+            repeat_icon_layout.setVisibility(View.GONE);
+        }
+        this.isSwappedFeeds = isSwappedFeeds;
+
+
+        ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
+            @Override
+            public void run() {
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (preRollingStreamingRender != null) {
+                            try {
+                                /* start render */
+                                AppLog.i("LiveView", "Flow, preRollingStreamingRender setSwappedFeeds start, isSwappedFeeds: " + isSwappedFeeds);
+                                preRollingStreamingRender.changeSurfaceContext(isSwappedFeeds ? surfaceContext : preRollingSurfaceContext);
+                                AppLog.i("LiveView", "Flow, preRollingStreamingRender setSwappedFeeds end");
+                            } catch (NADKException e) {
+                                e.printStackTrace();
+                                AppLog.e("LiveView", "Flow, preRollingStreamingRender setSwappedFeeds end, Exception: " + e.getClass().getSimpleName() + ", error: " + e.getMessage());
+                            }
+                        }
+
+                        if (streamingRender != null) {
+                            try {
+                                /* start render */
+                                AppLog.i("LiveView", "Flow, streamingRender setSwappedFeeds start, isSwappedFeeds: " + isSwappedFeeds);
+                                streamingRender.changeSurfaceContext(isSwappedFeeds ? preRollingSurfaceContext : surfaceContext);
+                                AppLog.i("LiveView", "Flow, streamingRender setSwappedFeeds end");
+                            } catch (NADKException e) {
+                                e.printStackTrace();
+                                AppLog.e("LiveView", "Flow, streamingRender setSwappedFeeds end, Exception: " + e.getClass().getSimpleName() + ", error: " + e.getMessage());
+                            }
+                        }
+
+                    }
+                });
+
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (preRollingStreamingRender != null) {
+                            try {
+                                /* start render */
+                                AppLog.i("LiveView", "Flow, preRollingStreamingRender setSwappedFeeds start, isSwappedFeeds: " + isSwappedFeeds);
+                                preRollingStreamingRender.changeSurfaceContext(isSwappedFeeds ? surfaceContext : preRollingSurfaceContext);
+                                AppLog.i("LiveView", "Flow, preRollingStreamingRender setSwappedFeeds end");
+                            } catch (NADKException e) {
+                                e.printStackTrace();
+                                AppLog.e("LiveView", "Flow, preRollingStreamingRender setSwappedFeeds end, Exception: " + e.getClass().getSimpleName() + ", error: " + e.getMessage());
+                            }
+                        }
+
+                        if (streamingRender != null) {
+                            try {
+                                /* start render */
+                                AppLog.i("LiveView", "Flow, streamingRender setSwappedFeeds start, isSwappedFeeds: " + isSwappedFeeds);
+                                streamingRender.changeSurfaceContext(isSwappedFeeds ? preRollingSurfaceContext : surfaceContext);
+                                AppLog.i("LiveView", "Flow, streamingRender setSwappedFeeds end");
+                            } catch (NADKException e) {
+                                e.printStackTrace();
+                                AppLog.e("LiveView", "Flow, streamingRender setSwappedFeeds end, Exception: " + e.getClass().getSimpleName() + ", error: " + e.getMessage());
+                            }
+                        }
+                    }
+                }, 50);
+
+
+            }
+        }, 200);
+
+
+
+    }
+
+    protected void initPreRollingSurface(NADKStreamingRender render) {
+        AppLog.i("LiveView", "Flow, initPreRollingSurface in");
+        if (preRollingCallback != null) {
+            pre_rolling_surface_view.getHolder().removeCallback(preRollingCallback);
+        }
+
+        preRollingCallback = new SurfaceHolder.Callback() {
+            @Override
+            public void surfaceCreated(SurfaceHolder holder) {
+                AppLog.i("LiveView", "Flow, initPreRollingSurface surfaceReady");
+                preRollingSurfaceContext = new NADKSurfaceContext(pre_rolling_surface_view.getHolder().getSurface());
+
+                if (!isSwappedFeeds) {
+                    if (preRollingStreamingRender != null) {
+                        try {
+                            /* start render */
+                            AppLog.i("LiveView", "Flow, preRollingStreamingRender changeSurfaceContext start, isSwappedFeeds: " + isSwappedFeeds);
+                            preRollingStreamingRender.changeSurfaceContext(preRollingSurfaceContext);
+
+                            AppLog.i("LiveView", "Flow, preRollingStreamingRender changeSurfaceContext end");
+                        } catch (NADKException e) {
+                            e.printStackTrace();
+                            AppLog.e("LiveView", "Flow, preRollingStreamingRender changeSurfaceContext end, Exception: " + e.getClass().getSimpleName() + ", error: " + e.getMessage());
+                        }
+                    }
+                } else {
+                    if (streamingRender != null) {
+                        try {
+                            /* start render */
+                            AppLog.i("LiveView", "Flow, streamingRender changeSurfaceContext start, isSwappedFeeds: " + isSwappedFeeds);
+                            streamingRender.changeSurfaceContext(preRollingSurfaceContext);
+
+                            AppLog.i("LiveView", "Flow, streamingRender changeSurfaceContext end");
+                        } catch (NADKException e) {
+                            e.printStackTrace();
+                            AppLog.e("LiveView", "Flow, streamingRender changeSurfaceContext end, Exception: " + e.getClass().getSimpleName() + ", error: " + e.getMessage());
+                        }
+                    }
+                    enableStreaming();
+                }
+
+                AppLog.i("LiveView", "Flow, initPreRollingSurface surface available: " + preRollingSurfaceContext);
+            }
+
+            @Override
+            public void surfaceChanged(SurfaceHolder holder, int format, int width, int height)
+            {
+                try {
+                    preRollingSurfaceContext.setViewPort(0, 0, width, height);
+                    AppLog.i("LiveView", "Flow, initPreRollingSurface surface changed: " + preRollingSurfaceContext);
+                } catch (NADKException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            @Override
+            public void surfaceDestroyed(SurfaceHolder holder) {
+//                surfaceReady = false;
+//                disableStreaming();
+                AppLog.i("LiveView", "Flow, initPreRollingSurface surface destroyed: " + preRollingSurfaceContext);
+            }
+        };
+        pre_rolling_surface_view.getHolder().addCallback(preRollingCallback);
+        AppLog.i("LiveView", "Flow, initPreRollingSurface out");
+
+    }
+
     protected void initSurface(NADKStreamingRender render) {
-        Log.i("__render__", "initSurface: ");
+        AppLog.i("LiveView", "Flow, initSurface in");
         if (callback != null) {
             surfaceView.getHolder().removeCallback(callback);
         }
@@ -461,14 +720,36 @@ public class LiveViewActivity extends NADKShowBaseActivity
 
                 }
 
-                if (render != null) {
-                    try {
-                        render.changeSurfaceContext(surfaceContext);
-                    } catch (NADKException e) {
-                        e.printStackTrace();
+                if (isSwappedFeeds) {
+                    if (preRollingStreamingRender != null) {
+                        try {
+                            /* start render */
+                            AppLog.i("LiveView", "Flow, preRollingStreamingRender changeSurfaceContext start, isSwappedFeeds: " + isSwappedFeeds);
+                            preRollingStreamingRender.changeSurfaceContext(surfaceContext);
+
+                            AppLog.i("LiveView", "Flow, preRollingStreamingRender changeSurfaceContext end");
+                        } catch (NADKException e) {
+                            e.printStackTrace();
+                            AppLog.e("LiveView", "Flow, preRollingStreamingRender changeSurfaceContext end, Exception: " + e.getClass().getSimpleName() + ", error: " + e.getMessage());
+                        }
                     }
+                } else {
+                    if (streamingRender != null) {
+                        try {
+                            /* start render */
+                            AppLog.i("LiveView", "Flow, streamingRender changeSurfaceContext start, isSwappedFeeds: " + isSwappedFeeds);
+                            streamingRender.changeSurfaceContext(surfaceContext);
+
+                            AppLog.i("LiveView", "Flow, streamingRender changeSurfaceContext end");
+                        } catch (NADKException e) {
+                            e.printStackTrace();
+                            AppLog.e("LiveView", "Flow, streamingRender changeSurfaceContext end, Exception: " + e.getClass().getSimpleName() + ", error: " + e.getMessage());
+                        }
+                    }
+                    enableStreaming();
                 }
-                enableStreaming();
+
+
                 Log.i("__render__", "surface available: " + surfaceContext);
             }
 
@@ -491,6 +772,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
             }
         };
         surfaceView.getHolder().addCallback(callback);
+        AppLog.i("LiveView", "Flow, initSurface out");
 
     }
 
@@ -690,6 +972,8 @@ public class LiveViewActivity extends NADKShowBaseActivity
     {
         startWakeup();
 
+//        initPreRollingRender();
+
         try
         {
             AppLog.i("LiveView", "Flow, prepareRender start");
@@ -757,6 +1041,16 @@ public class LiveViewActivity extends NADKShowBaseActivity
                 this.streamingRender.destroyRender();
                 this.streamingRender.stopStreaming();
                 streamingRender = null;
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
+        try {
+            if (preRollingStreamingRender != null) {
+                this.preRollingStreamingRender.destroyRender();
+                this.preRollingStreamingRender.stopStreaming();
+                preRollingStreamingRender = null;
             }
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -1084,11 +1378,20 @@ public class LiveViewActivity extends NADKShowBaseActivity
             /* width : height = 16 : 9 */
             params.height = screenWidth * 9 / 16;
 
-
             AppLog.d(TAG, " screenWidth =" + screenWidth);
             AppLog.d(TAG, " params.width =" + params.width);
             AppLog.d(TAG, " params.height =" + params.height);
             live_view_layout.setLayoutParams(params);
+
+
+            ViewGroup.LayoutParams pre_rolling_tips_layoutLayout_Params = pre_rolling_tips_layout.getLayoutParams();
+            AppLog.d(TAG, " pre_rolling_tips_layout.width =" + pre_rolling_tips_layoutLayout_Params.width);
+            AppLog.d(TAG, " pre_rolling_tips_layout.height =" + pre_rolling_tips_layoutLayout_Params.height);
+            ViewGroup.LayoutParams localViewLayoutParams = pre_rolling_layout.getLayoutParams();
+            localViewLayoutParams.height = params.height / 3;
+            localViewLayoutParams.width = localViewLayoutParams.height * 16 / 9;
+            localViewLayoutParams.height += pre_rolling_tips_layoutLayout_Params.height;
+            pre_rolling_layout.setLayoutParams(localViewLayoutParams);
 
 
             top_bar_layout.setVisibility(View.VISIBLE);
@@ -1100,28 +1403,39 @@ public class LiveViewActivity extends NADKShowBaseActivity
         } else if (requestedOrientation == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE || requestedOrientation == ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE) {
             fullscreen_switch.setImageResource(R.drawable.exo_icon_fullscreen_exit);
             //横屏
-            ViewGroup.LayoutParams params = live_view_layout.getLayoutParams();
-
-            /* width : height = 4 : 3 */
+            AppLog.d(TAG, " screenWidth =" + SystemInfo.getScreenWidth(this) + " screenHeight =" + SystemInfo.getScreenHeight(this));
+            int screenWidth;
+            if (this.getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                screenWidth = SystemInfo.getScreenHeight(this);
+            } else {
+                screenWidth = SystemInfo.getScreenWidth(this);
+            }
+            RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)live_view_layout.getLayoutParams();
+//            params.width = ViewGroup.LayoutParams.MATCH_PARENT;
 //            params.height = ViewGroup.LayoutParams.MATCH_PARENT;
-//            int screenWidth = SystemInfo.getScreenWidth(this);
-//            params.width = screenWidth * 4 / 3;
-
-            /* width : height = 16 : 9 */
-            params.width = ViewGroup.LayoutParams.MATCH_PARENT;
-            int screenWidth = SystemInfo.getScreenHeight(this);
-            params.height = ViewGroup.LayoutParams.MATCH_PARENT;
-//            params.height = screenWidth * 9 / 16;
-
-
-
             AppLog.d(TAG, " screenWidth =" + screenWidth);
+            params.height = screenWidth;
+            params.width = params.height * 16 / 9;
+
             AppLog.d(TAG, " params.width =" + params.width);
             AppLog.d(TAG, " params.height =" + params.height);
 
 
             live_view_layout.setLayoutParams(params);
-//            remoteView.setLayoutParams(new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT,RelativeLayout.LayoutParams.MATCH_PARENT));
+
+
+            ViewGroup.LayoutParams pre_rolling_tips_layoutLayout_Params = pre_rolling_tips_layout.getLayoutParams();
+            AppLog.d(TAG, " pre_rolling_tips_layout.width =" + pre_rolling_tips_layoutLayout_Params.width);
+            AppLog.d(TAG, " pre_rolling_tips_layout.height =" + pre_rolling_tips_layoutLayout_Params.height);
+            ViewGroup.LayoutParams localViewLayoutParams = pre_rolling_layout.getLayoutParams();
+            localViewLayoutParams.height = params.height / 3;
+            localViewLayoutParams.width = localViewLayoutParams.height * 16 / 9;
+            localViewLayoutParams.height += pre_rolling_tips_layoutLayout_Params.height;
+            pre_rolling_layout.setLayoutParams(localViewLayoutParams);
+            AppLog.d(TAG, " pre_rolling_layout.width =" + localViewLayoutParams.width);
+            AppLog.d(TAG, " pre_rolling_layout.height =" + localViewLayoutParams.height);
+
+
             ScreenUtils.setLandscape(this, requestedOrientation);
             topbar.setVisibility(View.VISIBLE);
             top_bar_layout.setVisibility(View.GONE);
@@ -1133,9 +1447,6 @@ public class LiveViewActivity extends NADKShowBaseActivity
                     | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                     | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION);
             orientationIsVertical = false;
-            RelativeLayout.LayoutParams remoteViewParams = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT,
-                    RelativeLayout.LayoutParams.MATCH_PARENT);
-
         }
     }
 

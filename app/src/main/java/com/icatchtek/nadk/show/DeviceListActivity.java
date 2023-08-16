@@ -273,7 +273,7 @@ public class DeviceListActivity extends NADKShowBaseActivity {
                 if (responseList != null) {
                     List<NADKLocalDevice> localDevices = convertToNADKLocalDeviceList(responseList);
                     DeviceManager.getInstance().reloadDevice(localDevices);
-                    deviceItemList = convertToDeviceItemList(localDevices);
+                    deviceItemList = convertToDeviceItemList(DeviceManager.getInstance().getDeviceList());
                     handler.post(new Runnable() {
                         @Override
                         public void run() {

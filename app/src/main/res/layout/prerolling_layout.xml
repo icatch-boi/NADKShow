@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <RelativeLayout
+        android:id="@+id/pre_rolling_tips_layout"
+        android:layout_width="match_parent"
+        android:layout_height="16dp"
+        android:background="@color/half_transparent_bar"
+        >
+        <ImageView
+            android:id="@+id/pre_rolling_cancel"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_centerVertical="true"
+            android:src="@mipmap/nav_btn_cancel"/>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:layout_centerVertical="true"
+            android:layout_centerHorizontal="true">
+
+            <RelativeLayout
+                android:id="@+id/repeat_icon_layout"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/repeat_full_icon"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:background="@drawable/exo_icon_fullscreen_enter"
+                    android:layout_centerInParent="true"
+                    android:visibility="visible"/>
+                <ImageView
+                    android:id="@+id/repeat_icon"
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
+                    android:background="@drawable/exo_icon_previous"
+                    android:layout_centerInParent="true"
+                    android:visibility="visible"/>
+
+            </RelativeLayout>
+
+            <TextView
+                android:id="@+id/pre_rolling_tips"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginRight="4dp"
+                android:textColor="@color/white"
+                android:textSize="10sp"
+                android:text="Pre-Rolling"/>
+
+
+            <ImageView
+                android:id="@+id/live_icon"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:background="@drawable/shape_bg_round_red"
+                android:visibility="gone"/>
+
+        </LinearLayout>
+
+    </RelativeLayout>
+
+    <SurfaceView
+        android:id="@+id/pre_rolling_surface_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_centerHorizontal="true"
+        />
+
+
+
+</LinearLayout>

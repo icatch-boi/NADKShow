@@ -108,13 +108,13 @@ public class NADKConfig {
         setupInfo.setMaxLatency(500);
         setupInfo.setLocalAddresses(NetworkUtils.getNetworkAddress());
 
-        if (signalingType == NADKSignalingType.NADK_SIGNALING_TYPE_BASE_TCP) {
-            setupInfo.setSrtp(false);
-            setupInfo.setRtcpTwcc(true);
-        } else {
+//        if (signalingType == NADKSignalingType.NADK_SIGNALING_TYPE_BASE_TCP) {
+//            setupInfo.setSrtp(false);
+//            setupInfo.setRtcpTwcc(true);
+//        } else {
             setupInfo.setSrtp(getSrtp());
             setupInfo.setRtcpTwcc(getRtcpTwcc());
-        }
+//        }
         return setupInfo;
     }
 
