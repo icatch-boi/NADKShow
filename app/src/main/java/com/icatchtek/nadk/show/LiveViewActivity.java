@@ -102,6 +102,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
     private TextView topbar_title;
     private RelativeLayout top_bar_layout;
     private ImageButton back_btn;
+    private TextView tool_bar_title;
     private Button webrtc_btn;
     private Button talk_btn;
     private ImageView talk_imv;
@@ -124,6 +125,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
     private NADKPlaybackClientService playbackClientService;
     private Button playback_btn;
     private ImageView playback_imv;
+    private TextView playback_imv_txt;
 
     private NADKWebrtcClient webrtcClient;
     private NADKWebrtcControl webrtcControl;
@@ -277,6 +279,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
             }
         });
         playback_imv.setEnabled(false);
+        playback_imv_txt = findViewById(R.id.playback_imv_txt);
 
         connect_loading_layout = (RelativeLayout) findViewById(R.id.connect_loading_layout);
         connect_loading_bar = (ProgressBar) findViewById(R.id.connect_loading_bar);
@@ -320,6 +323,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
         top_bar_layout = findViewById(R.id.toolbar_layout);
         control_btn_layout = findViewById(R.id.control_btn_layout);
         back_btn = findViewById(R.id.back_btn);
+        tool_bar_title = findViewById(R.id.tool_bar_title);
         webrtc_btn = findViewById(R.id.webrtc_btn);
         talk_btn = findViewById(R.id.talk_btn);
         live_view_layout = findViewById(R.id.live_view_layout);
@@ -408,7 +412,12 @@ public class LiveViewActivity extends NADKShowBaseActivity
                     AppLog.i(TAG, "isFastDoubleClick the v.id=" + v.getId());
                     return;
                 }
-                setWebrtc();
+                if (prepareWebrtc) {
+                    setWebrtc(false);
+                } else {
+                    setWebrtc(true);
+                }
+
             }
         });
 
@@ -883,7 +892,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
                             "android", masterRole ? "master" : "viewer"));
             AppLog.i("LiveView", "Flow, createWebrtcStreaming end");
 
-            setWebrtc();
+            setWebrtc(true);
         }
         catch(Exception ex) {
             ex.printStackTrace();
@@ -976,6 +985,17 @@ public class LiveViewActivity extends NADKShowBaseActivity
 
         try
         {
+            AppLog.i("LiveView", "Flow, getWebRtcServerInfo start");
+            NADKWebrtcSetupInfo setupInfo = NADKConfig.getInstance().createNADKWebrtcSetupInfo(this.masterRole, signalingType);
+            /* create webrtc authentication */
+            NADKWebrtcAuthentication authentication = NADKConfig.getInstance().createNADKWebrtcAuthentication(this.masterRole, signalingType);
+            if (authentication == null) {
+                AppLog.e("LiveView", "Flow, getWebRtcServerInfo end");
+                return false;
+            }
+            AppLog.i("LiveView", "Flow, getWebRtcServerInfo end");
+
+
             AppLog.i("LiveView", "Flow, prepareRender start");
             prepareRender();
 
@@ -987,22 +1007,11 @@ public class LiveViewActivity extends NADKShowBaseActivity
 
             /* prepare webrtc client*/
 
-            AppLog.i("LiveView", "Flow, getWebRtcServerInfo start");
-            NADKWebrtcSetupInfo setupInfo = NADKConfig.getInstance().createNADKWebrtcSetupInfo(this.masterRole, signalingType);
-            /* create webrtc authentication */
-            NADKWebrtcAuthentication authentication = NADKConfig.getInstance().createNADKWebrtcAuthentication(this.masterRole, signalingType);
-            if (authentication == null) {
-                AppLog.e("LiveView", "Flow, getWebRtcServerInfo end");
-                return false;
-            }
-            AppLog.i("LiveView", "Flow, getWebRtcServerInfo end");
-
             AppLog.i("LiveView", "Flow, startWebrtcStreaming start");
             /* prepare the webrtc client, connect to the signaling */
             this.webrtc.prepareWebrtc(setupInfo, authentication);
             AppLog.i("LiveView", "Flow, startWebrtcStreaming end");
-        }
-        catch(NADKException ex) {
+        } catch(NADKException ex) {
             ex.printStackTrace();
             AppLog.e("LiveView", "Flow, startWebrtcStreaming end, Exception: " + ex.getClass().getSimpleName() + ", error: " + ex.getMessage());
             closeConnectLoading();
@@ -1010,6 +1019,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
                 @Override
                 public void run() {
                     Toast.makeText(LiveViewActivity.this, "NADK_EVENT_WEBRTC_SIGNALING_PEER_DISCONNECTED", Toast.LENGTH_SHORT).show();
+                    tool_bar_title.setText("LiveView Failed");
 
                 }
             });
@@ -1216,6 +1226,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
                     @Override
                     public void run() {
                         Toast.makeText(LiveViewActivity.this, finalStatus, Toast.LENGTH_SHORT).show();
+                        tool_bar_title.setText("LiveView Succeed");
                         showConnectLoading("Receiving Frame");
 
                     }
@@ -1235,6 +1246,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
                     @Override
                     public void run() {
                         Toast.makeText(LiveViewActivity.this, finalStatus, Toast.LENGTH_SHORT).show();
+                        tool_bar_title.setText("LiveView Failed");
 
                     }
                 });
@@ -1300,11 +1312,11 @@ public class LiveViewActivity extends NADKShowBaseActivity
         }
     }
 
-    private void setWebrtc() {
-        if (prepareWebrtc) {
+    private void setWebrtc(boolean prepareWebrtc) {
+        if (!prepareWebrtc) {
 
             destroyWebrtc();
-            prepareWebrtc = false;
+            this.prepareWebrtc = false;
 
             handler.post(new Runnable() {
                 @Override
@@ -1325,9 +1337,9 @@ public class LiveViewActivity extends NADKShowBaseActivity
 
             /* prepare viewer */
             boolean retVal = prepareWebrtc();
-            AppLog.i("main", "prepare webrtc: " + retVal);
+            AppLog.i(TAG, "prepare webrtc: " + retVal);
             if (retVal) {
-                prepareWebrtc = true;
+                this.prepareWebrtc = true;
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
@@ -1480,6 +1492,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
                 public void run() {
                     playback_btn.setEnabled(true);
                     playback_imv.setEnabled(true);
+                    playback_imv_txt.setText("Playback Enable");
                 }
             });
 

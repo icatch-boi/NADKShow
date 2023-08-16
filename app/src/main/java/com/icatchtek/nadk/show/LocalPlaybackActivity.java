@@ -92,6 +92,7 @@ public class LocalPlaybackActivity extends NADKShowBaseActivity {
 
     private RelativeLayout play_info_layout;
     private RelativeLayout top_bar_layout;
+    private TextView top_bar_title;
 
     private RelativeLayout remote_connect_status_layout;
     private ProgressBar remote_connect_status_progress_bar;
@@ -140,6 +141,7 @@ public class LocalPlaybackActivity extends NADKShowBaseActivity {
         back_btn = findViewById(R.id.back_btn);
         top_bar_layout = findViewById(R.id.toolbar_layout);
         play_info_layout = findViewById(R.id.play_info_layout);
+        top_bar_title = findViewById(R.id.tool_bar_title);
 
 
         video_view_layout = findViewById(R.id.video_view_layout);
@@ -534,6 +536,7 @@ public class LocalPlaybackActivity extends NADKShowBaseActivity {
                         public void run() {
                             MyProgressDialog.closeProgressDialog();
                             MyToast.show(LocalPlaybackActivity.this, "play failed");
+                            top_bar_title.setText("Playback Failed");
                         }
                     });
                 }
@@ -783,12 +786,25 @@ public class LocalPlaybackActivity extends NADKShowBaseActivity {
             switch (playbackState) {
                 case ExoPlayer.STATE_IDLE:
                     stateString = "ExoPlayer.STATE_IDLE      -";
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            top_bar_title.setText("Playback Failed");
+                        }
+                    });
                     break;
                 case ExoPlayer.STATE_BUFFERING:
                     stateString = "ExoPlayer.STATE_BUFFERING -";
                     break;
                 case ExoPlayer.STATE_READY:
                     stateString = "ExoPlayer.STATE_READY     -";
+
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            top_bar_title.setText("Playback Succeed");
+                        }
+                    });
 
                     break;
                 case ExoPlayer.STATE_ENDED:
