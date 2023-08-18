@@ -34,6 +34,7 @@ public class WakeUpThread extends Thread {
     @Override
     public void run(){
         flag = true;
+        isWakeup = false;
 
         while(flag){
             try {
@@ -41,7 +42,12 @@ public class WakeUpThread extends Thread {
                 WakeUpResponse response = socket.receive();
                 if (response.getResponse().equals(WakeUpConstants.WAKEUP_RESPONSE)) {
                     isWakeup = true;
-                    break;
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+//                    break;
                 }
 //                    Thread.sleep(5000);
             } catch (IOException e) {

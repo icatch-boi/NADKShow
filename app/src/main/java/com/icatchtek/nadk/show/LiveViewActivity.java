@@ -1,6 +1,7 @@
 package com.icatchtek.nadk.show;
 
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
@@ -28,6 +29,10 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
+
+import com.icatchtek.basecomponent.prompt.MyProgressDialog;
+import com.icatchtek.basecomponent.prompt.MyToast;
 import com.icatchtek.basecomponent.utils.ClickUtils;
 import com.icatchtek.baseutil.ThreadPoolUtils;
 import com.icatchtek.baseutil.device.MyOrientationEventListener;
@@ -80,6 +85,8 @@ import com.icatchtek.nadk.webrtc.assist.NADKAuthorization;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Timer;
+import java.util.TimerTask;
 
 
 public class LiveViewActivity extends NADKShowBaseActivity
@@ -158,6 +165,14 @@ public class LiveViewActivity extends NADKShowBaseActivity
     private boolean isSwappedFeeds = false;
     private boolean isPlayPreRolling = false;
 
+    private Timer connectTimer;
+    private boolean retryConnect = true;
+    private boolean iceConnected = false;
+    private boolean iceConnecting = false;
+    private boolean connecting = true;
+    private boolean isback = false;
+    private static final long CONNECT_TIMEOUT_MS = 60 * 1000;
+
 
 
     @Override
@@ -210,7 +225,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
                 }
 
                 /* prepare viewer */
-                boolean retVal = prepareWebrtc();
+                boolean retVal = setWebrtc(true);
                 AppLog.i("main", "prepare webrtc: " + retVal);
             }
         });
@@ -219,8 +234,8 @@ public class LiveViewActivity extends NADKShowBaseActivity
         btnDestroyWebrtc.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                boolean retVal = destroyWebrtc();
-                AppLog.i("main", "destroy webrtc: " + retVal);
+                setWebrtc(false);
+                AppLog.i("main", "destroy webrtc");
             }
         });
 
@@ -286,6 +301,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
         connect_loading_txt = (TextView) findViewById(R.id.connect_loading_txt);
 
         showConnectLoading("Connecting...");
+        startConnectTimer(CONNECT_TIMEOUT_MS, "start preview timeout");
 
 
         initView();
@@ -789,7 +805,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
     protected void onDestroy()
     {
         super.onDestroy();
-        exit();
+        disconnect();
 
     }
 
@@ -818,15 +834,26 @@ public class LiveViewActivity extends NADKShowBaseActivity
     /* Add code there to make ensure that the stream is closed */
     private void exit()
     {
-        try {
-            unRegisterStreamingListener();
-            if (streamingRender != null) {
-                boolean retVal = destroyWebrtc();
-                AppLog.i(TAG, "destroy webrtc: " + retVal);
-            }
-            AppLog.i(TAG, "exit activity");
-        } catch (Exception e) {
-            e.printStackTrace();
+        AppLog.i("LiveView", "Flow, disconnect");
+        if (isback) {
+            AppLog.d(TAG, "already disconnect, only finish();");
+            finish();
+        } else {
+            MyProgressDialog.showProgressDialog(activity, "Disconnecting");
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    disconnect();
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            MyProgressDialog.closeProgressDialog();
+                            finish();
+                        }
+                    });
+
+                }
+            }).start();
         }
     }
 
@@ -834,14 +861,18 @@ public class LiveViewActivity extends NADKShowBaseActivity
         if (signalingType != NADKSignalingType.NADK_SIGNALING_TYPE_BASE_TCP) {
             return;
         }
-        NADKAuthorization authorization = NADKConfig.getInstance().getLanModeAuthorization();
 
-        try {
-            wakeUpThread = new WakeUpThread(authorization.getAccessKey(), authorization.getSecretKey());
-            wakeUpThread.start();
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (wakeUpThread == null || wakeUpThread.isWakeup()) {
+            NADKAuthorization authorization = NADKConfig.getInstance().getLanModeAuthorization();
+
+            try {
+                wakeUpThread = new WakeUpThread(authorization.getAccessKey(), authorization.getSecretKey());
+                wakeUpThread.start();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
+
     }
 
     private void stopWakeup() {
@@ -892,7 +923,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
                             "android", masterRole ? "master" : "viewer"));
             AppLog.i("LiveView", "Flow, createWebrtcStreaming end");
 
-            setWebrtc(true);
+            reconnect(1000);
         }
         catch(Exception ex) {
             ex.printStackTrace();
@@ -901,6 +932,52 @@ public class LiveViewActivity extends NADKShowBaseActivity
 
 
         return true;
+    }
+
+    private void reconnect(long sleep_ms) {
+        while (connecting) {
+            boolean ret = setWebrtc(true);
+            if (ret) {
+                retryConnect = true;
+                break;
+            }
+
+            /* destroy playback */
+            try {
+                if (playback != null) {
+                    this.playback.destroy();
+                }
+
+            } catch (NADKException e) {
+                e.printStackTrace();
+            }
+
+            /* destroy webrtc */
+            try {
+                webrtc.destroyWebrtc();
+            } catch (Exception ex)
+            {
+                ex.printStackTrace();
+//            return false;
+            }
+
+            this.playbackClientService = null;
+            this.playbackClient = null;
+
+            if (sleep_ms > 0) {
+                try {
+                    Thread.sleep(sleep_ms);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+
+        }
+    }
+
+    private void disconnect() {
+        unRegisterStreamingListener();
+        setWebrtc(false);
     }
 
     private void prepareRender() {
@@ -979,6 +1056,10 @@ public class LiveViewActivity extends NADKShowBaseActivity
 
     private boolean prepareWebrtc()
     {
+        isback = false;
+        connecting = true;
+        iceConnecting = false;
+        iceConnected = false;
         startWakeup();
 
 //        initPreRollingRender();
@@ -1011,18 +1092,21 @@ public class LiveViewActivity extends NADKShowBaseActivity
             /* prepare the webrtc client, connect to the signaling */
             this.webrtc.prepareWebrtc(setupInfo, authentication);
             AppLog.i("LiveView", "Flow, startWebrtcStreaming end");
+            notifyConnectionStatus("Connect to server successful");
         } catch(NADKException ex) {
             ex.printStackTrace();
-            AppLog.e("LiveView", "Flow, startWebrtcStreaming end, Exception: " + ex.getClass().getSimpleName() + ", error: " + ex.getMessage());
-            closeConnectLoading();
-            handler.post(new Runnable() {
-                @Override
-                public void run() {
-                    Toast.makeText(LiveViewActivity.this, "NADK_EVENT_WEBRTC_SIGNALING_PEER_DISCONNECTED", Toast.LENGTH_SHORT).show();
-                    tool_bar_title.setText("LiveView Failed");
+            AppLog.e("LiveView", "Flow, startWebrtcStreaming end, Exception: " + ex.getClass().getSimpleName() + ", error: " + ex.getErrCode());
+//            closeConnectLoading();
+//            handler.post(new Runnable() {
+//                @Override
+//                public void run() {
+//                    Toast.makeText(LiveViewActivity.this, "NADK_EVENT_WEBRTC_SIGNALING_PEER_DISCONNECTED", Toast.LENGTH_SHORT).show();
+//                    tool_bar_title.setText("LiveView Failed");
+//
+//                }
+//            });
 
-                }
-            });
+            return false;
 
         }
 
@@ -1031,8 +1115,21 @@ public class LiveViewActivity extends NADKShowBaseActivity
 
     private boolean destroyWebrtc()
     {
+        if (isback) {
+            AppLog.d(TAG, "already disconnect");
+            return true;
+        }
+
+        AppLog.d(TAG, "disconnect start");
         AppLog.i("LiveView", "Flow, disconnect");
         AppLog.i(TAG, "stop viewer");
+        isback = true;
+        connecting = false;
+        retryConnect = false;
+        iceConnecting = false;
+        iceConnected = false;
+
+        stopConnectTimer();
 
         stopWakeup();
 
@@ -1215,22 +1312,26 @@ public class LiveViewActivity extends NADKShowBaseActivity
                 status = "NADK_EVENT_WEBRTC_PEER_CONNECTING";
                 AppLog.i(TAG, "WEBRTC_PEER Status, NADK_EVENT_WEBRTC_PEER_CONNECTED");
                 AppLog.i("LiveView", "Flow, deviceReady");
+                stopWakeup();
+                iceConnecting = true;
+                notifyConnectionStatus("Device NADK Ready");
 
 
             } else if (event.getEventID() == NADKEventID.NADK_EVENT_WEBRTC_PEER_CONNECTED) {
                 status = "NADK_EVENT_WEBRTC_PEER_CONNECTED";
                 AppLog.i("LiveView", "Flow, NADK_EVENT_WEBRTC_PEER_CONNECTED");
-                stopWakeup();
-                final String finalStatus = status;
-                handler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(LiveViewActivity.this, finalStatus, Toast.LENGTH_SHORT).show();
-                        tool_bar_title.setText("LiveView Succeed");
-                        showConnectLoading("Receiving Frame");
 
-                    }
-                });
+                iceConnected = true;
+                final String finalStatus = status;
+//                handler.post(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        tool_bar_title.setText("LiveView Succeed");
+//
+//                    }
+//                });
+                notifyConnectionStatus("Device NADK Connected");
+                showConnectLoading("Receiving Frame");
 
 
             } else if (event.getEventID() == NADKEventID.NADK_EVENT_WEBRTC_PEER_CLOSED || event.getEventID() == NADKEventID.NADK_EVENT_WEBRTC_PEER_CONNECT_FAILED) {
@@ -1242,21 +1343,20 @@ public class LiveViewActivity extends NADKShowBaseActivity
 
                 AppLog.i("LiveView", "Flow, " + iceConnectionState);
                 final String finalStatus = status;
-                handler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(LiveViewActivity.this, finalStatus, Toast.LENGTH_SHORT).show();
-                        tool_bar_title.setText("LiveView Failed");
-
-                    }
-                });
-                closeConnectLoading();
+//                handler.post(new Runnable() {
+//                    @Override
+//                    public void run() {
+//                        tool_bar_title.setText("LiveView Failed");
+//
+//                    }
+//                });
+                notifyConnectionFailed("ConnectionState changed：" + iceConnectionState, "IceConnectionChange");
 
 
             } else if (event.getEventID() == NADKEventID.NADK_EVENT_FIRST_VIDEO_FRAME_RENDERED) {
                 status = "NADK_EVENT_FIRST_VIDEO_FRAME_RENDERED";
                 AppLog.i("LiveView", "Flow, NADK_EVENT_FIRST_VIDEO_FRAME_RENDERED");
-                closeConnectLoading();
+                notifyConnectionSuccessful();
 
 
             } else if (event.getEventID() == NADKEventID.NADK_EVENT_FIRST_AUDIO_FRAME_RENDERED) {
@@ -1312,11 +1412,12 @@ public class LiveViewActivity extends NADKShowBaseActivity
         }
     }
 
-    private void setWebrtc(boolean prepareWebrtc) {
+    private boolean setWebrtc(boolean prepareWebrtc) {
         if (!prepareWebrtc) {
 
-            destroyWebrtc();
+            boolean retVal = destroyWebrtc();
             this.prepareWebrtc = false;
+            AppLog.i(TAG, "destroy webrtc: " + retVal);
 
             handler.post(new Runnable() {
                 @Override
@@ -1325,6 +1426,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
                     webrtc_btn.setText("Prepare Webrtc");
                 }
             });
+            return retVal;
 
         } else {
             AppLog.i("LiveView", "Flow, Click Play");
@@ -1347,6 +1449,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
                     }
                 });
             }
+            return retVal;
         }
     }
 
@@ -1570,4 +1673,131 @@ public class LiveViewActivity extends NADKShowBaseActivity
             }
         }
     }
+
+    private void notifySignalingConnectionFailed() {
+        notifyConnectionFailed("connect to server failed", null);
+    }
+
+    private void notifyConnectionFailed(String message, String caused) {
+        if (connecting) {
+            AppLog.e(TAG, "notifyConnectionFailed: " + message + ", caused: " + caused);
+            connecting = false;
+
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    disconnect();
+                }
+            }).start();
+
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+
+                    closeConnectLoading();
+
+                    AlertDialog.Builder diag = new AlertDialog.Builder(LiveViewActivity.this);
+                    diag.setCancelable(false);
+                    diag.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            finish();
+                        }
+                    }).setMessage(message).create().show();
+                }
+            });
+
+        }
+    }
+
+    private void notifyConnectionSuccessful() {
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                retryConnect = false;
+                stopWakeup();
+                stopConnectTimer();
+                if (orientationEventListener != null) {
+                    orientationEventListener.enable();
+                }
+
+                closeConnectLoading();
+
+            }
+        });
+    }
+
+    private void notifyConnectionStatus(String status) {
+        notifyConnectionStatus(status, null);
+    }
+
+    private void notifyConnectionStatus(String status, String caused) {
+        if (connecting) {
+            AppLog.d(TAG, "ConnectionStatus: " + status + ", caused: " + caused);
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+//                    Toast.makeText(WebRtcActivity.this, status, Toast.LENGTH_SHORT).show();
+                    MyToast.show(LiveViewActivity.this, status);
+                }
+            });
+        }
+    }
+
+    private void startConnectTimer(long delay_ms, String msg) {
+        AppLog.d(TAG, "startConnectTimer delay_ms: " + delay_ms + ", msg: " + msg);
+        if (connectTimer != null) {
+            connectTimer.cancel();
+        } else {
+            connectTimer = new Timer();
+        }
+
+        connectTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                if (retryConnect) {
+                    retryConnect = false;
+                    if (connecting && iceConnected) {
+                        AppLog.e(TAG, "connectTimer timeout, caused by receiving frame，delay 10s");
+                        iceConnected = false;
+                        new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                stopConnectTimer();
+                                startConnectTimer(10 * 1000, "received frame timeout");
+                            }
+                        }).start();
+
+                    } else if (connecting && iceConnecting) {
+                        AppLog.e(TAG, "connectTimer timeout, caused by connecting ice，delay 30s");
+                        iceConnecting = false;
+                        new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                stopConnectTimer();
+                                startConnectTimer(10 * 1000, "connect to device timeout");
+                            }
+                        }).start();
+                    } else {
+                        AppLog.e(TAG, "connectTimer timeout, caused by connecting, stop it, do not delay");
+                        notifyConnectionFailed(msg, null);
+                    }
+
+                } else {
+                    AppLog.e(TAG, "connectTimer timeout, caused by retryConnect, stop it");
+                    notifyConnectionFailed(msg, null);
+                }
+
+            }
+        }, delay_ms);
+    }
+
+    private void stopConnectTimer() {
+        if (connectTimer != null) {
+            connectTimer.cancel();
+            connectTimer = null;
+        }
+    }
+
 }

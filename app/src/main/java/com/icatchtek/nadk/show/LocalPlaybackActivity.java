@@ -25,6 +25,7 @@ import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.ui.PlayerView;
 import com.google.android.exoplayer2.util.EventLogger;
 import com.google.android.exoplayer2.util.MimeTypes;
+import com.icatch.smarthome.am.utils.DateUtil;
 import com.icatchtek.basecomponent.prompt.MyProgressDialog;
 import com.icatchtek.basecomponent.prompt.MyToast;
 import com.icatchtek.basecomponent.prompt.PercentageProgressDialog;
@@ -39,7 +40,9 @@ import com.icatchtek.nadk.playback.NADKPlayback;
 import com.icatchtek.nadk.playback.NADKPlaybackAssist;
 import com.icatchtek.nadk.playback.NADKPlaybackClient;
 import com.icatchtek.nadk.playback.NADKPlaybackClientListener;
+import com.icatchtek.nadk.playback.file.NADKFileStatusListener;
 import com.icatchtek.nadk.playback.file.NADKFileTransferListener;
+import com.icatchtek.nadk.playback.type.NADKMediaFile;
 import com.icatchtek.nadk.reliant.NADKException;
 import com.icatchtek.nadk.reliant.NADKSignalingType;
 import com.icatchtek.nadk.reliant.NADKWebrtcAuthentication;
@@ -210,6 +213,9 @@ public class LocalPlaybackActivity extends NADKShowBaseActivity {
         initializePlayer();
 
 
+        cachePath = getExternalCacheDir().toString() + "/NADK";
+        createDirectory(cachePath);
+        createDirectory(cachePath);
 
         if (!isFromPV) {
             initWebrtc();
@@ -223,6 +229,7 @@ public class LocalPlaybackActivity extends NADKShowBaseActivity {
 
             nadkLocalDevice = DeviceManager.getInstance().getDevice(NADKConfig.getInstance().getLanModeAuthorization().getAccessKey());
             playbackClient = nadkLocalDevice.getPlaybackClient();
+
             ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
                 @Override
                 public void run() {
@@ -555,11 +562,12 @@ public class LocalPlaybackActivity extends NADKShowBaseActivity {
     }
 
     private String downloadFile(FileItemInfo itemInfo) {
-        String dstFile = cachePath + "/" + itemInfo.getFileName();
-//        File file = new File(dstFile);
-//        if (file.exists()) {
-//            return LOCAL_FILE_PREFIX + dstFile;
-//        }
+        String dstFile = cachePath + "/" + DateUtil.timeFormatFileNameString(itemInfo.getTime()) + ".mp4";
+        File file = new File(dstFile);
+        if (file.exists()) {
+            AppLog.d(TAG, dstFile + " is already exist");
+            return LOCAL_FILE_PREFIX + dstFile;
+        }
         if (localFileListInfo != null) {
 //            showDownloadDialog();
 
@@ -597,23 +605,28 @@ public class LocalPlaybackActivity extends NADKShowBaseActivity {
 
             });
 
-            ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
-                @Override
-                public void run() {
+//            ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
+//                @Override
+//                public void run() {
+//
+//
+//                    String filePath = localFileListInfo.downloadMediaFile(DeviceLocalFileListInfo.convertToNADKMediaFile(itemInfo), (NADKFileTransferListener) fileDownloadStatusListener);
+//                    dismissDownloadDialog();
+//
+//                }
+//            }, 200);
+//            return LOCAL_FILE_PREFIX + fileDownloadStatusListener.getFileName();
 
+            String filePath = localFileListInfo.downloadMediaFile(DeviceLocalFileListInfo.convertToNADKMediaFile(itemInfo), (NADKFileTransferListener) fileDownloadStatusListener);
+            dismissDownloadDialog();
+            if (filePath != null && !filePath.isEmpty()) {
+                File srcFile = new File(filePath);
+                srcFile.renameTo(new File(dstFile));
+                return LOCAL_FILE_PREFIX + dstFile;
+            } else {
+                return "";
+            }
 
-                    String filePath = localFileListInfo.downloadMediaFile(DeviceLocalFileListInfo.convertToNADKMediaFile(itemInfo), (NADKFileTransferListener) fileDownloadStatusListener);
-                    dismissDownloadDialog();
-
-                }
-            }, 200);
-            return LOCAL_FILE_PREFIX + fileDownloadStatusListener.getFileName();
-
-//            String filePath = localFileListInfo.downloadMediaFile(DeviceLocalFileListInfo.convertToNADKMediaFile(itemInfo), (NADKFileTransferListener) fileDownloadStatusListener);
-//            dismissDownloadDialog();
-//            File srcFile = new File(filePath);
-//            srcFile.renameTo(new File(dstFile));
-//            return LOCAL_FILE_PREFIX + dstFile;
 
         }
         return "";
@@ -848,9 +861,9 @@ public class LocalPlaybackActivity extends NADKShowBaseActivity {
 
             /* create playback based on webrtc */
 
-            cachePath = getExternalCacheDir().toString() + "/NADK";
-            createDirectory(cachePath);
-            createDirectory(cachePath);
+//            cachePath = getExternalCacheDir().toString() + "/NADK";
+//            createDirectory(cachePath);
+//            createDirectory(cachePath);
 
 
             this.playback = NADKPlaybackAssist.createWebrtcPlayback(
@@ -958,7 +971,50 @@ public class LocalPlaybackActivity extends NADKShowBaseActivity {
     private void initPlayback() {
         if (localFileListInfo == null) {
 //            this.playbackClient = playbackClientService.getPlaybackClient(100);
+
             localFileListInfo = new DeviceLocalFileListInfo(playbackClient);
+            try {
+                if (playbackClient == null) {
+                    return;
+                }
+                playbackClient.setFileStatusListener(new NADKFileStatusListener() {
+                    @Override
+                    public void fileAdded(NADKMediaFile mediaFile) {
+                        AppLog.d(TAG, "NADKFileStatusListener fileAdded: " + mediaFile.toString());
+                        try {
+                            if (localFileListInfo == null) {
+                                return;
+                            }
+                            localFileListInfo.pullDownToRefresh();
+                            fileItemInfoList = localFileListInfo.getDeviceFileInfoList();
+                            handler.post(new Runnable() {
+                                @Override
+                                public void run() {
+
+                                    if (fileItemInfoList != null) {
+                                        fileListView.renderList(fileItemInfoList);
+                                    } else {
+                                        fileItemInfoList = new LinkedList<>();
+                                        fileListView.renderList(fileItemInfoList);
+                                    }
+
+                                }
+                            });
+                        } catch (NADKException e) {
+                            e.printStackTrace();
+                        }
+
+                    }
+
+                    @Override
+                    public void fileRemoved(NADKMediaFile mediaFile) {
+                        AppLog.d(TAG, "NADKFileStatusListener fileRemoved: " + mediaFile.toString());
+
+                    }
+                });
+            } catch (NADKException e) {
+                e.printStackTrace();
+            }
             try {
                 localFileListInfo.pullDownToRefresh();
                 fileItemInfoList = localFileListInfo.getDeviceFileInfoList();
