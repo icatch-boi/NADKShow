@@ -1,5 +1,7 @@
 package com.icatchtek.nadk.show;
 
+import static com.icatchtek.nadk.show.device.NADKLocalDevice.DEFAULT_CHANNEL_NAME;
+
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -23,8 +25,6 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -61,8 +61,12 @@ import com.icatchtek.nadk.show.assist.NADKStreamingClientAssist;
 import com.icatchtek.nadk.show.assist.WebrtcLogStatusListener;
 import com.icatchtek.nadk.show.device.DeviceManager;
 import com.icatchtek.nadk.show.device.NADKLocalDevice;
-import com.icatchtek.nadk.show.sdk.H264FileStreamingClient;
+import com.icatchtek.nadk.show.sdk.NADKCustomerStreamingClient;
+import com.icatchtek.nadk.show.sdk.NADKCustomerStreamingClientObserver;
 import com.icatchtek.nadk.show.sdk.NADKPlaybackClientService;
+import com.icatchtek.nadk.show.sdk.NADKPreRollingStreamingClient;
+import com.icatchtek.nadk.show.sdk.datachannel.EventDataChannel;
+import com.icatchtek.nadk.show.sdk.datachannel.NADKWebRtcDataChannel;
 import com.icatchtek.nadk.show.utils.NADKConfig;
 import com.icatchtek.nadk.show.utils.NADKShowLog;
 import com.icatchtek.nadk.show.utils.NADKWebRtcAudioRecord;
@@ -164,6 +168,8 @@ public class LiveViewActivity extends NADKShowBaseActivity
     private NADKStreamingRender preRollingStreamingRender;
     private boolean isSwappedFeeds = false;
     private boolean isPlayPreRolling = false;
+    private EventDataChannel eventChannel;
+    private NADKCustomerStreamingClient customerStreamingClient;
 
     private Timer connectTimer;
     private boolean retryConnect = true;
@@ -455,7 +461,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
             }
         });
 
-        initPreRolling();
+        initPreRollingView();
 
         setPvLayout(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
@@ -481,7 +487,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
 
     }
 
-    private void initPreRolling() {
+    private void initPreRollingView() {
         pre_rolling_surface_view = findViewById(R.id.pre_rolling_surface_view);
         pre_rolling_layout = findViewById(R.id.pre_rolling_layout);
         pre_rolling_tips_layout = findViewById(R.id.pre_rolling_tips_layout);
@@ -509,16 +515,12 @@ public class LiveViewActivity extends NADKShowBaseActivity
                 }
                 pre_rolling_layout.setVisibility(View.GONE);
                 pre_rolling_surface_view.setVisibility(View.GONE);
-//                new Thread(new Runnable() {
-//                    @Override
-//                    public void run() {
-//                        try {
-//                            videoCapturer.stopCapture();
-//                        } catch (InterruptedException e) {
-//                            e.printStackTrace();
-//                        }
-//                    }
-//                }).start();
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        customerStreamingClient.destroy();
+                    }
+                }).start();
 
 
             }
@@ -533,8 +535,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
                 }
                 if (pre_rolling_surface_view.getVisibility() == View.GONE && !isPlayPreRolling) {
                     isPlayPreRolling = true;
-//                    videoCapturer.startCapture(VIDEO_SIZE_WIDTH, VIDEO_SIZE_HEIGHT, VIDEO_FPS);
-
+                    customerStreamingClient.prepare();
                 }
             }
         });
@@ -549,18 +550,70 @@ public class LiveViewActivity extends NADKShowBaseActivity
             public void run() {
                 DisplayMetrics displayMetrics = Resources.getSystem().getDisplayMetrics();
                 NADKGLDisplayPPI displayPPI = new NADKGLDisplayPPI(displayMetrics.xdpi, displayMetrics.ydpi);
-                NADKStreamingClient preRollingClient = new H264FileStreamingClient();
+//                customerStreamingClient = new H264FileStreamingClient();
+                customerStreamingClient = new NADKPreRollingStreamingClient();
                 try {
                     preRollingStreamingRender = NADKStreamingRender.createTextureRender(
                             webrtc.getLogger(),
                             webrtc.getEventHandler(),
                             NADKGLColor.BLACK, displayPPI, preRollingSurfaceContext);
                     preRollingStreamingRender.prepareRender();
-                    preRollingStreamingRender.startStreaming(preRollingClient);
+                    preRollingStreamingRender.startStreaming(customerStreamingClient);
+
+                    customerStreamingClient.initialize(new NADKCustomerStreamingClientObserver() {
+                        @Override
+                        public void onPrepare(boolean succeed) {
+                            if (succeed) {
+                                isPlayPreRolling = true;
+                                handler.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        pre_rolling_layout.setVisibility(View.VISIBLE);
+                                        pre_rolling_surface_view.setVisibility(View.VISIBLE);
+                                        repeat_icon_layout.setVisibility(View.GONE);
+                                        pre_rolling_cancel.setVisibility(View.VISIBLE);
+                                    }
+                                });
+                                try {
+                                    preRollingStreamingRender.prepareRender();
+                                    preRollingStreamingRender.startStreaming(customerStreamingClient);
+                                } catch (NADKException e) {
+                                    e.printStackTrace();
+                                }
+
+                            } else {
+                                isPlayPreRolling = false;
+                            }
+
+                        }
+
+                        @Override
+                        public void onDestroy() {
+                            handler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    pre_rolling_surface_view.setVisibility(View.GONE);
+                                    if (isSwappedFeeds) {
+                                        setSwappedFeeds(false);
+                                    }
+                                    pre_rolling_cancel.setVisibility(View.GONE);
+                                    repeat_icon_layout.setVisibility(View.VISIBLE);
+                                    isPlayPreRolling = false;
+                                }
+                            });
+
+                            try {
+                                preRollingStreamingRender.destroyRender();
+                                preRollingStreamingRender.stopStreaming();
+                            } catch (NADKException e) {
+                                e.printStackTrace();
+                            }
+
+                        }
+                    });
 
                 } catch (NADKException e) {
                     e.printStackTrace();
-
                 }
 
             }
@@ -1163,6 +1216,11 @@ public class LiveViewActivity extends NADKShowBaseActivity
             ex.printStackTrace();
         }
 
+        if (customerStreamingClient != null) {
+            customerStreamingClient.destroy();
+            customerStreamingClient = null;
+        }
+
         disableStreaming();
 
 
@@ -1647,6 +1705,12 @@ public class LiveViewActivity extends NADKShowBaseActivity
                 public void onDataChannelCreated(NADKDataChannel dataChannel) {
                     try {
                         AppLog.d(TAG, "onDataChannelCreated: " + dataChannel.getChannelName());
+                        String deviceId = DEFAULT_CHANNEL_NAME;
+                        eventChannel = new EventDataChannel(deviceId, new NADKWebRtcDataChannel(dataChannel));
+                        if (customerStreamingClient != null && customerStreamingClient instanceof NADKPreRollingStreamingClient) {
+                            eventChannel.addEventObserver(EventDataChannel.IOT_EVENT_TYPE_BINARY, (NADKPreRollingStreamingClient)customerStreamingClient);
+                        }
+
                     } catch (NADKException e) {
                         e.printStackTrace();
                     }

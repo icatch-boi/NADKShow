@@ -24,13 +24,14 @@ import java.nio.channels.FileChannel;
 /**
  * Created by sha.liu on 2023/8/10.
  */
-public class H264FileStreamingClient implements NADKStreamingClient {
+public class H264FileStreamingClient implements NADKCustomerStreamingClient {
     private final static String TAG = H264FileStreamingClient.class.getSimpleName();
     private int width = 1280;
     private int height = 720;
     private int fps = 30;
     private int frameCount = 0;
     private int interval;
+    private NADKCustomerStreamingClientObserver clientObserver;
 
     public H264FileStreamingClient() {
         interval = 1000 / fps;
@@ -212,5 +213,25 @@ public class H264FileStreamingClient implements NADKStreamingClient {
         }
 
         return false;
+    }
+
+    @Override
+    public void initialize(NADKCustomerStreamingClientObserver observer) {
+        this.clientObserver = observer;
+    }
+
+    @Override
+    public void prepare() {
+        if (clientObserver != null) {
+            clientObserver.onPrepare(true);
+        }
+
+    }
+
+    @Override
+    public void destroy() {
+        if (clientObserver != null) {
+            clientObserver.onDestroy();
+        }
     }
 }
