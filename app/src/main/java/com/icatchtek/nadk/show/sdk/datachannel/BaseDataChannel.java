@@ -120,22 +120,26 @@ public class BaseDataChannel implements IDataChannel.Observer{
 
     @Override
     public void onMessage(byte[] data, int dataSize) {
-        AppLog.d(TAG, "onMessage: data = " + data + ", dataSize = " + dataSize);
+        AppLog.e(TAG, "onMessage: data = " + data + ", dataSize = " + dataSize);
 
-        StringBuilder tmp = new StringBuilder();
-        for (int i = 0; i < 8; i++) {
-            tmp.append(String.format("%02X ", data[i]));
-        }
-        AppLog.e(TAG, "onMessage header dump: " + tmp.toString());
-
-        PacketData packetData = new PacketData(data);
-        PacketHeader header = packetData.getHeader();
-
-        AppLog.e(TAG, "onMessage: " + header.toString());
-
+//        StringBuilder tmp = new StringBuilder();
+//        for (int i = 0; i < 8; i++) {
+//            tmp.append(String.format("%02X ", data[i]));
+//        }
+//        AppLog.e(TAG, "onMessage header dump: " + tmp.toString());
+//
+//        PacketData packetData = new PacketData(data);
+//        PacketHeader header = packetData.getHeader();
+//
+//        AppLog.e(TAG, "onMessage: " + header.toString());
+//
+//
+//        if (observer != null) {
+//            observer.onPacketArrived(packetData);
+//        }
 
         if (observer != null) {
-            observer.onPacketArrived(packetData);
+            observer.onRawDataArrived(data, dataSize);
         }
 
     }
@@ -180,5 +184,6 @@ public class BaseDataChannel implements IDataChannel.Observer{
     public interface Observer {
         public void onStateChange(IDataChannel.State state);
         public void onPacketArrived(PacketData packetData);
+        public void onRawDataArrived(byte[] data, int dataSize);
     }
 }

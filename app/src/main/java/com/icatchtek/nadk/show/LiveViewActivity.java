@@ -61,6 +61,7 @@ import com.icatchtek.nadk.show.assist.NADKStreamingClientAssist;
 import com.icatchtek.nadk.show.assist.WebrtcLogStatusListener;
 import com.icatchtek.nadk.show.device.DeviceManager;
 import com.icatchtek.nadk.show.device.NADKLocalDevice;
+import com.icatchtek.nadk.show.sdk.H264FileStreamingClient;
 import com.icatchtek.nadk.show.sdk.NADKCustomerStreamingClient;
 import com.icatchtek.nadk.show.sdk.NADKCustomerStreamingClientObserver;
 import com.icatchtek.nadk.show.sdk.NADKPlaybackClientService;
@@ -495,6 +496,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
         pre_rolling_tips = findViewById(R.id.pre_rolling_tips);
         live_icon = findViewById(R.id.live_icon);
         repeat_icon_layout = findViewById(R.id.repeat_icon_layout);
+        pre_rolling_tips_layout.setVisibility(View.GONE);
         initPreRollingSurface(null);
 
 
@@ -557,60 +559,77 @@ public class LiveViewActivity extends NADKShowBaseActivity
                             webrtc.getLogger(),
                             webrtc.getEventHandler(),
                             NADKGLColor.BLACK, displayPPI, preRollingSurfaceContext);
-                    preRollingStreamingRender.prepareRender();
-                    preRollingStreamingRender.startStreaming(customerStreamingClient);
+//                    preRollingStreamingRender.prepareRender();
+//                    preRollingStreamingRender.startStreaming(customerStreamingClient);
+
 
                     customerStreamingClient.initialize(new NADKCustomerStreamingClientObserver() {
                         @Override
                         public void onPrepare(boolean succeed) {
-                            if (succeed) {
-                                isPlayPreRolling = true;
-                                handler.post(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        pre_rolling_layout.setVisibility(View.VISIBLE);
-                                        pre_rolling_surface_view.setVisibility(View.VISIBLE);
-                                        repeat_icon_layout.setVisibility(View.GONE);
-                                        pre_rolling_cancel.setVisibility(View.VISIBLE);
-                                    }
-                                });
-                                try {
-                                    preRollingStreamingRender.prepareRender();
-                                    preRollingStreamingRender.startStreaming(customerStreamingClient);
-                                } catch (NADKException e) {
-                                    e.printStackTrace();
-                                }
+                            ThreadPoolUtils.getInstance().executorOtherThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (succeed) {
+                                        handler.post(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                pre_rolling_tips_layout.setVisibility(View.VISIBLE);
+                                                pre_rolling_layout.setVisibility(View.VISIBLE);
+                                                pre_rolling_surface_view.setVisibility(View.VISIBLE);
+                                                repeat_icon_layout.setVisibility(View.GONE);
+                                                pre_rolling_cancel.setVisibility(View.VISIBLE);
+//                                                setSwappedFeeds(false);
+                                            }
+                                        });
 
-                            } else {
-                                isPlayPreRolling = false;
-                            }
+                                        try {
+                                            preRollingStreamingRender.prepareRender();
+                                            preRollingStreamingRender.startStreaming(customerStreamingClient);
+                                        } catch (NADKException e) {
+                                            e.printStackTrace();
+                                        }
+                                        isPlayPreRolling = true;
+
+                                    } else {
+                                        isPlayPreRolling = false;
+                                    }
+                                }
+                            }, 200);
 
                         }
 
                         @Override
                         public void onDestroy() {
-                            handler.post(new Runnable() {
+                            ThreadPoolUtils.getInstance().executorOtherThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    pre_rolling_surface_view.setVisibility(View.GONE);
-                                    if (isSwappedFeeds) {
-                                        setSwappedFeeds(false);
-                                    }
-                                    pre_rolling_cancel.setVisibility(View.GONE);
-                                    repeat_icon_layout.setVisibility(View.VISIBLE);
-                                    isPlayPreRolling = false;
-                                }
-                            });
+                                    handler.post(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            pre_rolling_surface_view.setVisibility(View.GONE);
+                                            if (isSwappedFeeds) {
+                                                setSwappedFeeds(false);
+                                            }
+                                            pre_rolling_cancel.setVisibility(View.GONE);
+                                            repeat_icon_layout.setVisibility(View.VISIBLE);
+                                            isPlayPreRolling = false;
+                                        }
+                                    });
 
-                            try {
-                                preRollingStreamingRender.destroyRender();
-                                preRollingStreamingRender.stopStreaming();
-                            } catch (NADKException e) {
-                                e.printStackTrace();
-                            }
+                                    try {
+                                        if (preRollingStreamingRender != null) {
+                                            preRollingStreamingRender.destroyRender();
+                                            preRollingStreamingRender.stopStreaming();
+                                        }
+                                    } catch (NADKException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                            }, 200);
 
                         }
                     });
+//                    customerStreamingClient.prepare();
 
                 } catch (NADKException e) {
                     e.printStackTrace();
@@ -1115,7 +1134,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
         iceConnected = false;
         startWakeup();
 
-//        initPreRollingRender();
+        initPreRollingRender();
 
         try
         {
@@ -1218,7 +1237,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
 
         if (customerStreamingClient != null) {
             customerStreamingClient.destroy();
-            customerStreamingClient = null;
+//            customerStreamingClient = null;
         }
 
         disableStreaming();

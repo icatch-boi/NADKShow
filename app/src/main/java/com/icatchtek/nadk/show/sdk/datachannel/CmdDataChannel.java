@@ -309,6 +309,11 @@ public class CmdDataChannel implements BaseDataChannel.Observer {
 
     }
 
+    @Override
+    public void onRawDataArrived(byte[] data, int dataSize) {
+
+    }
+
     public void setThumbnailChannel(DownloadDataChannel thumbnailChannel) {
         this.thumbnailChannel = thumbnailChannel;
     }

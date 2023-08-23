@@ -283,6 +283,11 @@ public class DownloadDataChannel implements BaseDataChannel.Observer {
 
     }
 
+    @Override
+    public void onRawDataArrived(byte[] data, int dataSize) {
+
+    }
+
     private class DownloadResult {
         public long fileSize = 0;
         public long offset = 0;

@@ -26,9 +26,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class NADKPreRollingStreamingClient implements NADKCustomerStreamingClient, Observer {
     private final static String TAG = NADKPreRollingStreamingClient.class.getSimpleName();
     private final static int MAX_LOOP_COUNT = 3;
-    private int width = 1280;
-    private int height = 720;
-    private int fps = 30;
+    private int width = 1920;
+    private int height = 1080;
+    private int fps = 7;
     private int frameCount = 0;
     private int getFrameCount = 0;
     private int interval;
@@ -120,14 +120,14 @@ public class NADKPreRollingStreamingClient implements NADKCustomerStreamingClien
 
     @Override
     public void getNextVideoFrame(NADKFrameBuffer frameBuffer) throws NADKException {
+        try {
+            Thread.sleep(interval - 10);
+
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         if (!isPrepare) {
-            try {
-                Thread.sleep(interval);
-                throw new NADKException(NADKError.NADK_TRY_AGAIN);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            return;
+            throw new NADKException(NADKError.NADK_TRY_AGAIN);
         }
 
         BinaryEvent binaryEvent;
@@ -138,7 +138,7 @@ public class NADKPreRollingStreamingClient implements NADKCustomerStreamingClien
                 throw new NADKException(NADKError.NADK_TRY_AGAIN);
             }
             cachedFrameList.add(binaryEvent);
-            AppLog.d(TAG, "firstPlay: getFrameSize: " + binaryEvent.getEventDataSize() + ", index: " + binaryEvent.getHeader().getIndex() + ", isKeyFrame: " + binaryEvent.getHeader().getIsKeyFrame());
+            AppLog.d(TAG, "firstPlay: getFrameSize: " + binaryEvent.getEventDataSize() + ", index: " + binaryEvent.getHeader().getIndex() + ", isKeyFrame: " + binaryEvent.getHeader().getIsKeyFrame() + ", EndFlag: " + binaryEvent.getHeader().getEndFlag());
 
             if (binaryEvent.getHeader().getEndFlag() == 1 && receivedLastFrame && !isDestroy) {
                 firstPlay = false;
@@ -181,9 +181,10 @@ public class NADKPreRollingStreamingClient implements NADKCustomerStreamingClien
         frameBuffer.setFrameSize(frameSize);
         frameBuffer.setIndex(getFrameCount);
         boolean keyFrame = (binaryEvent.getHeader().getIsKeyFrame() == 1);
+        boolean isKeyFrame = isKeyFrame(frame);
         frameBuffer.setKeyFrame(keyFrame);
-        System.arraycopy(buffer, 0, frameBuffer.getBuffer(), 0, frameSize);
-        AppLog.e(TAG, "getNextVideoFrame frameCount: " + getFrameCount + ", pts: " + pts + ", frameSize: " + frameSize + ", keyFrame: " + keyFrame);
+        System.arraycopy(frame, 0, frameBuffer.getBuffer(), 0, frameSize);
+        AppLog.e(TAG, "getNextVideoFrame frameCount: " + getFrameCount + ", pts: " + pts + ", frameSize: " + frameSize + ", keyFrame: " + keyFrame + ", isKeyFrame: " + isKeyFrame);
         ++getFrameCount;
 
     }
@@ -200,6 +201,7 @@ public class NADKPreRollingStreamingClient implements NADKCustomerStreamingClien
 
     @Override
     public void update(Observable o, Object arg) {
+        AppLog.e(TAG, "Observable: " + o + ", Object: " + arg);
         if (isDestroy) {
             return;
         }
@@ -224,5 +226,33 @@ public class NADKPreRollingStreamingClient implements NADKCustomerStreamingClien
             }
         }
 
+    }
+
+    private boolean isKeyFrame(byte[] frame) {
+        StringBuilder tmp = new StringBuilder();
+        for (int i = 0; i < 30; i++) {
+            tmp.append(String.format("%02X ", frame[i]));
+        }
+        AppLog.e(TAG, "isKeyFrame dump: " + tmp.toString());
+        int offset = 0;
+        while (offset < frame.length - 4) {
+            // 找到 NALU 起始码
+            if (frame[offset] == 0x00 && frame[offset + 1] == 0x00  && frame[offset + 2] == 0x00 &&
+                    frame[offset + 3] == 0x01) {
+
+                int type = frame[offset + 10] & 0x1F;
+                if (type == 7) {
+                    // 帧类型为 I 帧，即关键帧
+                    return true;
+                } else {
+                    // 帧类型为 P 帧或 B 帧
+                    return false;
+                }
+            }
+
+            offset++;
+        }
+
+        return false;
     }
 }

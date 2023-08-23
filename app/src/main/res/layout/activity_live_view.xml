@@ -90,7 +90,7 @@
             android:layout_below="@+id/exo_top_bar"
             android:layout_alignWithParentIfMissing="true"
             android:layout_margin="12dp"
-            android:visibility="gone">
+            android:visibility="visible">
             <include layout="@layout/prerolling_layout"/>
 
         </RelativeLayout>

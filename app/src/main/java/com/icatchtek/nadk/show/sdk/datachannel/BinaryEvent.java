@@ -14,7 +14,7 @@ public class BinaryEvent {
         header = new BinaryEventHeader(this.packetData);
         eventDataSize = dataSize - BinaryEventHeader.HEADER_SIZE;
         eventData = new byte[eventDataSize];
-        System.arraycopy(this.packetData, PacketHeader.HEADER_SIZE, eventData, 0, eventDataSize);
+        System.arraycopy(this.packetData, BinaryEventHeader.HEADER_SIZE, eventData, 0, eventDataSize);
 
     }
 
@@ -24,7 +24,7 @@ public class BinaryEvent {
         this.eventDataSize = eventDataSize;
         packetData = new byte[eventDataSize + BinaryEventHeader.HEADER_SIZE];
         System.arraycopy(header.getHeaderByte(), 0, packetData, 0, BinaryEventHeader.HEADER_SIZE);
-        System.arraycopy(eventData, offset, packetData, PacketHeader.HEADER_SIZE, this.eventDataSize);
+        System.arraycopy(eventData, offset, packetData, BinaryEventHeader.HEADER_SIZE, this.eventDataSize);
     }
 
     public BinaryEventHeader getHeader() {
