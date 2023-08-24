@@ -287,6 +287,7 @@ public class EventDataChannel implements BaseDataChannel.Observer {
         packetId = 0;
 
         System.arraycopy(data, 0, receivedData, offset, dataSize);
+        AppLog.d(TAG, "onMessage: receivedData = " + receivedData + ", dataSize = " + dataSize + ", frameSize = " + (dataSize - BinaryEventHeader.HEADER_SIZE));
 
         StringBuilder tmp = new StringBuilder();
         for (int i = 0; i < BinaryEventHeader.HEADER_SIZE * 3; i++) {
@@ -296,7 +297,7 @@ public class EventDataChannel implements BaseDataChannel.Observer {
         BinaryEvent binaryEvent = new BinaryEvent(receivedData, dataSize);
         BinaryEventHeader binaryEventHeader = binaryEvent.getHeader();
 
-        AppLog.e(TAG, "onMessage: " + binaryEventHeader.toString());
+        AppLog.e(TAG, "onMessage: " + binaryEvent);
 
         MqttObservable mqttObservable = eventObservableMap.get(IOT_EVENT_TYPE_BINARY);
         if (mqttObservable != null) {

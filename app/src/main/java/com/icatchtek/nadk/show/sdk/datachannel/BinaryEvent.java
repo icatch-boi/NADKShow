@@ -1,16 +1,20 @@
 package com.icatchtek.nadk.show.sdk.datachannel;
 
+import java.util.Arrays;
+
 /**
  * Created by sha.liu on 2023/5/11.
  */
 public class BinaryEvent {
     private BinaryEventHeader header;
+    private int dateSize;
     private int eventDataSize;
     private byte[] eventData;
     private byte[] packetData;
 
     public BinaryEvent(byte[] packetData, int dataSize) {
         this.packetData = packetData;
+        this.dateSize = dataSize;
         header = new BinaryEventHeader(this.packetData);
         eventDataSize = dataSize - BinaryEventHeader.HEADER_SIZE;
         eventData = new byte[eventDataSize];
@@ -41,5 +45,15 @@ public class BinaryEvent {
 
     public int getEventDataSize() {
         return eventDataSize;
+    }
+
+
+    @Override
+    public String toString() {
+        return "BinaryEvent{" +
+                "header=" + header +
+                ", dateSize=" + dateSize +
+                ", eventDataSize=" + eventDataSize +
+                '}';
     }
 }

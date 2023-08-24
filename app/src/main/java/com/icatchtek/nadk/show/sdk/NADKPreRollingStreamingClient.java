@@ -1,6 +1,7 @@
 package com.icatchtek.nadk.show.sdk;
 
 import static com.icatchtek.nadk.reliant.NADKCodec.NADK_CODEC_H264;
+import static com.icatchtek.nadk.show.sdk.datachannel.DeviceExternalEventID.EXTERNAL_EVENT_ID_PRE_ROLLING_FRAME;
 
 import com.icatchtek.baseutil.log.AppLog;
 import com.icatchtek.nadk.reliant.NADKCodec;
@@ -208,6 +209,10 @@ public class NADKPreRollingStreamingClient implements NADKCustomerStreamingClien
 
         if (arg instanceof BinaryEvent) {
             BinaryEvent event = (BinaryEvent)arg;
+            if (event.getHeader().getEventid() != EXTERNAL_EVENT_ID_PRE_ROLLING_FRAME) {
+                AppLog.e(TAG, "event.getHeader().getEventid() != EXTERNAL_EVENT_ID_PRE_ROLLING_FRAME: " + event.toString());
+                return;
+            }
             receivedFrameQueue.offer(event);
             ++totalFrameCount;
             if (!receivedFirstFrame) {
