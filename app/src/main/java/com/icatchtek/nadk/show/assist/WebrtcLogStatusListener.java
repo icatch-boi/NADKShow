@@ -2,6 +2,7 @@ package com.icatchtek.nadk.show.assist;
 
 import java.util.Locale;
 
+import com.icatchtek.baseutil.log.AppLog;
 import com.icatchtek.nadk.reliant.NADKLogger;
 import com.icatchtek.nadk.webrtc.NADKWebrtcActiveClientListener;
 
@@ -21,7 +22,7 @@ public class WebrtcLogStatusListener implements NADKWebrtcActiveClientListener
     @Override
     public void noActiveClientExists()
     {
-        logger.writeCommonLogI("statusListener", "NoActiveClientExists");
+        AppLog.d("statusListener", "NoActiveClientExists");
 
         /* update log first */
         String tid = logger.getUniqueID();
@@ -36,10 +37,10 @@ public class WebrtcLogStatusListener implements NADKWebrtcActiveClientListener
 
         /* TODO: uploading */
         //uploadLogToServer(tid, absFileName, relFileName);
-        logger.writeCommonLogI("no_active_sessions", String.format(Locale.getDefault(),
+        AppLog.d("no_active_sessions", String.format(Locale.getDefault(),
             "BpSC| Please upload log, tid: %s, absFileName: %s, relFileName: %s\n", tid, absFileName, relFileName));
 
-        logger.writeCommonLogI("no_active_sessions", String.format(Locale.getDefault(),
+        AppLog.d("no_active_sessions", String.format(Locale.getDefault(),
                 "BpSC| no active sessions exist in NADK, deviceID: %s, applicationID: %s\n", deviceID, applicationID));
     }
 }

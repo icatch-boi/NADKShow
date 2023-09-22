@@ -68,6 +68,7 @@ import com.icatchtek.nadk.show.sdk.NADKPlaybackClientService;
 import com.icatchtek.nadk.show.sdk.NADKPreRollingStreamingClient;
 import com.icatchtek.nadk.show.sdk.datachannel.EventDataChannel;
 import com.icatchtek.nadk.show.sdk.datachannel.NADKWebRtcDataChannel;
+import com.icatchtek.nadk.show.timeline.TimeLineActivity;
 import com.icatchtek.nadk.show.utils.NADKConfig;
 import com.icatchtek.nadk.show.utils.NADKShowLog;
 import com.icatchtek.nadk.show.utils.NADKWebRtcAudioRecord;
@@ -104,6 +105,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
     private NADKWebrtcStreamParameter streamParameter;
     private NADKStreamingRender streamingRender;
     private NADKEventListener nadkStreamingEventListener;
+    private NADKStreamingClient nadkStreamingClient;
     private int signalingType;
 
     private RelativeLayout live_view_layout;
@@ -285,6 +287,17 @@ public class LiveViewActivity extends NADKShowBaseActivity
         playback_imv.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+//                try {
+//                    streamingRender.stopStreaming();
+//                } catch (NADKException e) {
+//                    e.printStackTrace();
+//                }
+//                try {
+//                    streamingRender.destroyRender();
+//                } catch (NADKException e) {
+//                    e.printStackTrace();
+//                }
+
 //                if (isPlayback) {
 //                    enableStreaming();
 //                    isPlayback = false;
@@ -292,11 +305,14 @@ public class LiveViewActivity extends NADKShowBaseActivity
 //                    disableStreaming();
 //                    isPlayback = true;
 //                }
+
                 setTalk(false);
                 disableStreaming();
-                Intent intent = new Intent(LiveViewActivity.this, LocalPlaybackActivity.class);
+                Intent intent = new Intent(LiveViewActivity.this, TimeLineActivity.class);
+//                Intent intent = new Intent(LiveViewActivity.this, LocalPlaybackActivity.class);
                 intent.putExtra("signalingType", NADKSignalingType.NADK_SIGNALING_TYPE_BASE_TCP);
                 intent.putExtra("isFromPV", true);
+
                 startActivity(intent);
             }
         });
@@ -404,6 +420,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
                     AppLog.i(TAG, "isFastDoubleClick the v.id=" + v.getId());
                     return;
                 }
+
                 if (enableTalk) {
                     setTalk(false);
                 } else {
@@ -420,6 +437,17 @@ public class LiveViewActivity extends NADKShowBaseActivity
                     AppLog.i(TAG, "isFastDoubleClick the v.id=" + v.getId());
                     return;
                 }
+
+//                try {
+//                    streamingRender.startStreaming(nadkStreamingClient);
+//                } catch (NADKException e) {
+//                    e.printStackTrace();
+//                }
+//                try {
+//                    streamingRender.prepareRender();
+//                } catch (NADKException e) {
+//                    e.printStackTrace();
+//                }
                 if (enableTalk) {
                     setTalk(false);
                 } else {
@@ -878,6 +906,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
     {
         super.onDestroy();
         disconnect();
+        AppLog.i(TAG, "onDestroy");
 
     }
 
@@ -974,13 +1003,18 @@ public class LiveViewActivity extends NADKShowBaseActivity
 
 
             /* create playback based on webrtc */
-            String path = getExternalCacheDir().toString() + "/NADK";
-            createDirectory(path);
-            createDirectory(path);
+
+            String cachePath = getExternalCacheDir().toString() + "/NADK/cache";
+            String dstPath = getExternalCacheDir().toString() + "/NADK/dst";
+            createDirectory(cachePath);
+            createDirectory(dstPath);
+//            String path = getExternalCacheDir().toString() + "/NADK";
+//            createDirectory(path);
+//            createDirectory(path);
 
 
             this.playback = NADKPlaybackAssist.createWebrtcPlayback(
-                    masterRole, path, path, this.webrtc);
+                    masterRole, cachePath, cachePath, this.webrtc);
 
 
             webrtc.addClientStatusListener(new WebrtcStatusListener());
@@ -1033,6 +1067,12 @@ public class LiveViewActivity extends NADKShowBaseActivity
 //            return false;
             }
 
+            try {
+                streaming.destroy();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
             this.playbackClientService = null;
             this.playbackClient = null;
 
@@ -1077,14 +1117,16 @@ public class LiveViewActivity extends NADKShowBaseActivity
             /* create a streaming client listener,
              * the streaming client will be used to send/receive media frames */
             if (clientListener == null) {
-                NADKStreamingProducer streamingProducer = NADKStreamingProducer.createFileStreamingProducer();
+//                NADKStreamingProducer streamingProducer = NADKStreamingProducer.createFileStreamingProducer();
                 clientListener = new NADKStreamingClientAssist(
                         webrtc.getLogger(),
                         webrtc.getEventHandler(),
                         (masterRole) ? null : streamingRender,
-                        (masterRole) ? streamingProducer : null, new NADKStreamingClientListener() {
+                        (masterRole) ? NADKStreamingProducer.createFileStreamingProducer() : null, new NADKStreamingClientListener() {
                     @Override
                     public void created(NADKStreamingClient streamingClient) {
+
+
 
                     }
 
@@ -1095,6 +1137,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
 
                     @Override
                     public void connected(NADKStreamingClient streamingClient) {
+                        nadkStreamingClient = streamingClient;
                         initTalk(streamingClient);
                     }
 
@@ -1240,6 +1283,10 @@ public class LiveViewActivity extends NADKShowBaseActivity
 //            customerStreamingClient = null;
         }
 
+        if (callback != null) {
+            callback = null;
+        }
+
         disableStreaming();
 
 
@@ -1275,6 +1322,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
 
         this.playbackClientService = null;
         this.playbackClient = null;
+        AppLog.d(TAG, "disconnect end");
 
         AppLog.reInitLog();
 
@@ -1666,13 +1714,18 @@ public class LiveViewActivity extends NADKShowBaseActivity
             } catch (NADKException e) {
                 e.printStackTrace();
             }
-            nadkLocalDevice.setPlaybackClient(playbackClient);
+            if (nadkLocalDevice != null) {
+                nadkLocalDevice.setPlaybackClient(playbackClient);
+            }
+
             handler.post(new Runnable() {
                 @Override
                 public void run() {
-                    playback_btn.setEnabled(true);
-                    playback_imv.setEnabled(true);
-                    playback_imv_txt.setText("Playback Enable");
+                    if (signalingType == NADKSignalingType.NADK_SIGNALING_TYPE_BASE_TCP) {
+                        playback_btn.setEnabled(true);
+                        playback_imv.setEnabled(true);
+                        playback_imv_txt.setText("Playback Enable");
+                    }
                 }
             });
 
@@ -1681,7 +1734,10 @@ public class LiveViewActivity extends NADKShowBaseActivity
         @Override
         public void disconnected(NADKPlaybackClient playbackClient) {
             AppLog.d(TAG, "LocalPlaybackClientListener disconnected: " + playbackClient);
-            nadkLocalDevice.setPlaybackClient(null);
+            if (nadkLocalDevice != null) {
+                nadkLocalDevice.setPlaybackClient(null);
+            }
+
         }
     }
 
@@ -1689,7 +1745,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
 
         @Override
         public void created(NADKWebrtcClient webrtcClient) {
-            initWebrtcControl(webrtcClient);
+
 
         }
 
@@ -1701,6 +1757,7 @@ public class LiveViewActivity extends NADKShowBaseActivity
 
         @Override
         public void connected(NADKWebrtcClient webrtcClient) {
+            initWebrtcControl(webrtcClient);
             stopWakeup();
 
 //            initWebrtcControl(webrtcClient);

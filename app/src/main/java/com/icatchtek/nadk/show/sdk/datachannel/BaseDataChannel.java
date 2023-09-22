@@ -1,6 +1,11 @@
 package com.icatchtek.nadk.show.sdk.datachannel;
 
+import static com.icatchtek.nadk.show.sdk.datachannel.DataChannelName.DATA_CHANNEL_NAME_USER_DC_0;
+
 import com.icatchtek.baseutil.log.AppLog;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by sha.liu on 2021/10/21.
@@ -15,6 +20,11 @@ public class BaseDataChannel implements IDataChannel.Observer{
     private Observer observer;
     private String channelName;
     private int channelId;
+    private Map<Integer, Map<Integer, PacketData>> packetMap;
+
+    private final int MAX_DATA_SIZE = 500 * 1024; //200KB
+    private byte[] receivedData;
+
 
     public BaseDataChannel(String deviceId, IDataChannel dataChannel) {
         this.deviceId = deviceId;
@@ -22,6 +32,8 @@ public class BaseDataChannel implements IDataChannel.Observer{
         channelName = dataChannel.getChannelName();
 //        channelId = dataChannel.id();
         TAG += "["+ channelName + "]";
+        packetMap = new HashMap<>();
+        receivedData = new byte[MAX_DATA_SIZE];
     }
 
     public void init(Observer observer) {
@@ -122,24 +134,70 @@ public class BaseDataChannel implements IDataChannel.Observer{
     public void onMessage(byte[] data, int dataSize) {
         AppLog.e(TAG, "onMessage: data = " + data + ", dataSize = " + dataSize);
 
-//        StringBuilder tmp = new StringBuilder();
-//        for (int i = 0; i < 8; i++) {
-//            tmp.append(String.format("%02X ", data[i]));
-//        }
-//        AppLog.e(TAG, "onMessage header dump: " + tmp.toString());
-//
-//        PacketData packetData = new PacketData(data);
-//        PacketHeader header = packetData.getHeader();
-//
-//        AppLog.e(TAG, "onMessage: " + header.toString());
-//
-//
-//        if (observer != null) {
-//            observer.onPacketArrived(packetData);
-//        }
+        StringBuilder tmp = new StringBuilder();
+        for (int i = 0; i < PacketHeader.HEADER_SIZE * 3; i++) {
+            tmp.append(String.format("%02X ", data[i]));
+        }
+        AppLog.e(TAG, "onMessage header dump: " + tmp.toString());
 
-        if (observer != null) {
-            observer.onRawDataArrived(data, dataSize);
+        PacketData packetData = new PacketData(data);
+        PacketHeader header = packetData.getHeader();
+
+        AppLog.e(TAG, "onMessage: " + header.toString());
+
+        if (!channelName.equals(DATA_CHANNEL_NAME_USER_DC_0)) {
+            if (observer != null) {
+                observer.onPacketArrived(packetData);
+            }
+            return;
+        }
+
+
+        int receivedTransId = header.getTransactionId();
+        int packetId = header.getPacketIndex();
+
+        if (header.getPacketIndex() == 0 && header.getEndFlag() == PacketHeader.END_FLAG_YES) {
+            int offset = 0;
+            int maxIndex = 0;
+            System.arraycopy(packetData.getData(), 0, receivedData, offset, header.getDataSize());
+            offset += header.getDataSize();
+            AppLog.d(TAG, "onMessage: receivedTransId = " + receivedTransId + ", all receivedData = " + receivedData + ", maxIndex = " + maxIndex + ", dataSize = " + offset);
+            if (observer != null) {
+                observer.onRawDataArrived(receivedData, offset);
+            }
+
+        } else {
+            if (packetMap.containsKey(receivedTransId)) {
+                Map<Integer, PacketData> map = packetMap.get(receivedTransId);
+                map.put(packetId, packetData);
+                int maxIndex = 0;
+                for (Map.Entry<Integer, PacketData> entry : map.entrySet()) {
+                    PacketData value = entry.getValue();
+                    if (value.getHeader().getEndFlag() == PacketHeader.END_FLAG_YES) {
+                        maxIndex = value.getHeader().getPacketIndex();
+                    }
+                }
+
+                if (maxIndex > 0 && map.size() == (maxIndex + 1)) {
+                    int offset = 0;
+                    for (int i = 0; i < map.size(); i++) {
+                        PacketData value = map.get(i);
+                        System.arraycopy(value.getData(), 0, receivedData, offset, value.getHeader().getDataSize());
+                        offset += value.getHeader().getDataSize();
+                    }
+                    packetMap.remove(receivedTransId);
+                    AppLog.d(TAG, "onMessage: receivedTransId = " + receivedTransId + ", all receivedData = " + receivedData + ", maxIndex = " + maxIndex + ", dataSize = " + offset);
+                    if (observer != null) {
+                        observer.onRawDataArrived(receivedData, offset);
+                    }
+                }
+
+            } else {
+                Map<Integer, PacketData> map = new HashMap<>();
+                map.put(packetId, packetData);
+                packetMap.put(receivedTransId, map);
+            }
+
         }
 
     }

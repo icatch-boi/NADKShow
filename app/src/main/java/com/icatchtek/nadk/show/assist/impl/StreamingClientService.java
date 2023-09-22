@@ -1,5 +1,6 @@
 package com.icatchtek.nadk.show.assist.impl;
 
+import com.icatchtek.baseutil.log.AppLog;
 import com.icatchtek.nadk.reliant.NADKError;
 import com.icatchtek.nadk.reliant.NADKException;
 import com.icatchtek.nadk.reliant.NADKFrameBuffer;
@@ -53,15 +54,23 @@ public class StreamingClientService
 
     protected void finalize()
     {
-        if (this.streamingRender != null)
-        {
-            try {
-                this.streamingRender.stopStreaming();
-                this.streamingRender.destroyRender();
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-        }
+//        if (this.streamingRender != null)
+//        {
+//            try {
+//                AppLog.d("StreamingClient:" + this.clientID, String.format(Locale.getDefault(),
+//                        "__flow_debug__, finalize 1"));
+//                this.streamingRender.stopStreaming();
+//                AppLog.d("StreamingClient:" + this.clientID, String.format(Locale.getDefault(),
+//                        "__flow_debug__, finalize 2"));
+//                this.streamingRender.destroyRender();
+//                AppLog.d("StreamingClient:" + this.clientID, String.format(Locale.getDefault(),
+//                        "__flow_debug__, finalize 3"));
+//            } catch (Exception ex) {
+//                ex.printStackTrace();
+//                AppLog.e("StreamingClient:" + this.clientID, String.format(Locale.getDefault(),
+//                        "__flow_debug__, finalize 4"));
+//            }
+//        }
     }
 
     public long getClientID() {
@@ -72,10 +81,10 @@ public class StreamingClientService
             NADKAudioParameter audioParameter,
             NADKVideoParameter videoParameter)
     {
-        logger.writeCommonLogI("StreamingClient:" + this.clientID, String.format(Locale.getDefault(),
+        AppLog.d("StreamingClient:" + this.clientID, String.format(Locale.getDefault(),
                 "__flow_debug__, streaming enabled 1"));
 
-        logger.writeCommonLogI("StreamingClient:" + this.clientID, String.format(Locale.getDefault(),
+        AppLog.d("StreamingClient:" + this.clientID, String.format(Locale.getDefault(),
                 "streaming enabled, audio: %s, video: %s",
                 audioParameter, videoParameter));
         if (audioParameter == null && videoParameter == null) {
@@ -85,33 +94,37 @@ public class StreamingClientService
         if (this.streamingRender != null)
         {
             try {
-                logger.writeCommonLogI("StreamingClient:" + this.clientID, String.format(Locale.getDefault(),
+                AppLog.d("StreamingClient:" + this.clientID, String.format(Locale.getDefault(),
                         "__flow_debug__, streaming enabled 2"));
                 this.streamingOn = true;
                 this.streamingRender.prepareRender();
                 this.streamingRender.startStreaming(this.streamingClient);
-            } catch (Exception ex) {
+            } catch (NADKException ex) {
                 ex.printStackTrace();
+                AppLog.e("StreamingClient:" + this.clientID, String.format(Locale.getDefault(),
+                        "__flow_debug__, streaming enabled 3: ") + ex.getErrCode());
             }
         }
     }
 
     public void streamingDisabled()
     {
-        logger.writeCommonLogI("StreamingClient:" + this.clientID, String.format(Locale.getDefault(),
+        AppLog.d("StreamingClient:" + this.clientID, String.format(Locale.getDefault(),
                 "__flow_debug__, streaming disabled 1"));
-        logger.writeCommonLogI("StreamingClient:" + this.clientID, String.format(Locale.getDefault(),
+        AppLog.d("StreamingClient:" + this.clientID, String.format(Locale.getDefault(),
                 "streaming disabled"));
 
         if (this.streamingRender != null) {
             try {
-                logger.writeCommonLogI("StreamingClient:" + this.clientID, String.format(Locale.getDefault(),
+                AppLog.d("StreamingClient:" + this.clientID, String.format(Locale.getDefault(),
                         "__flow_debug__, streaming disabled 2"));
                 this.streamingOn = false;
                 this.streamingRender.stopStreaming();
                 this.streamingRender.destroyRender();
             } catch (NADKException e) {
                 e.printStackTrace();
+                AppLog.e("StreamingClient:" + this.clientID, String.format(Locale.getDefault(),
+                        "__flow_debug__, streaming disabled 3: ") + e.getErrCode());
             }
         }
     }

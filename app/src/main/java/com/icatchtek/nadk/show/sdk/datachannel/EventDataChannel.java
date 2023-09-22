@@ -252,14 +252,14 @@ public class EventDataChannel implements BaseDataChannel.Observer {
 
             } else {
 
-                AppLog.d(TAG, "onMessage: receivedData = " + receivedData + ", dataSize = " + offset);
+                AppLog.d(TAG, "onMessage: receivedData = " + receivedData + ", dataSize = " + offset + ", frameSize = " + (offset - BinaryEventHeader.HEADER_SIZE));
                 if (offset < BinaryEventHeader.HEADER_SIZE) {
                     DebugLogger.e(TAG, "IOT_EVENT_TYPE_BINARY, offset < BinaryEventHeader.HEADER_SIZE");
                     return;
                 }
 
                 StringBuilder tmp = new StringBuilder();
-                for (int i = 0; i < BinaryEventHeader.HEADER_SIZE; i++) {
+                for (int i = 0; i < BinaryEventHeader.HEADER_SIZE * 3; i++) {
                     tmp.append(String.format("%02X ", receivedData[i]));
                 }
                 AppLog.e(TAG, "onMessage BinaryEventHeader dump: " + tmp.toString());

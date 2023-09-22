@@ -121,14 +121,35 @@
                 android:layout_centerInParent="true"
                 app:controller_layout_id="@layout/my_exo_player_control_view" />
 
+            <ImageView
+                android:id="@+id/exo_thumbnail_imv"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone"/>
+            <TextView
+                android:id="@+id/select_time_txv"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:text="2023-08-25 15:31:000"
+                style="@style/firstTextviewPrimary"
+                android:textColor="@color/white"
+                android:layout_marginTop="64dp"
+                android:visibility="gone"/>
+
 
         </RelativeLayout>
         <RelativeLayout
             android:id="@+id/play_info_layout"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_marginTop="16dp"
             android:layout_below="@+id/video_view_layout">
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/date_rv"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/black"
+                android:padding="8dp"/>
 
 <!--            <com.tinyai.libmediacomponent.components.filelist.FileListView2-->
 <!--                android:id="@+id/file_list_view"-->
@@ -141,9 +162,10 @@
             <com.icatchtek.nadk.show.timeline.ZFTimeLine
                 android:id="@+id/time_line_view"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_alignParentBottom="true"
-                android:background="@android:color/transparent">
+                android:layout_height="60dp"
+                android:layout_below="@+id/date_rv"
+
+                android:background="@color/lightblack">
 
             </com.icatchtek.nadk.show.timeline.ZFTimeLine>
 

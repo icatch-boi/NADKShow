@@ -14,7 +14,9 @@ import com.icatchtek.nadk.show.sdk.datachannel.BinaryEvent;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.Timer;
@@ -43,11 +45,14 @@ public class NADKPreRollingStreamingClient implements NADKCustomerStreamingClien
     private boolean isDestroy = false;
     private boolean isPrepare = false;
     private boolean firstPlay = false;
+    private Map<Integer, BinaryEvent> receivedFrameMap;
+    private int frameIndex = 0;
 
 
     public NADKPreRollingStreamingClient() {
         interval = 1000 / fps;
         receivedFrameQueue = new LinkedBlockingQueue<>(500);
+        receivedFrameMap = new HashMap<>();
     }
 
     @Override
@@ -88,6 +93,11 @@ public class NADKPreRollingStreamingClient implements NADKCustomerStreamingClien
 //            receivedFrameQueue = null;
         }
 
+        if (receivedFrameMap != null) {
+            receivedFrameMap.clear();
+//            receivedFrameQueue = null;
+        }
+
         if (clientObserver != null) {
             clientObserver.onDestroy();
         }
@@ -121,26 +131,48 @@ public class NADKPreRollingStreamingClient implements NADKCustomerStreamingClien
 
     @Override
     public void getNextVideoFrame(NADKFrameBuffer frameBuffer) throws NADKException {
-        try {
-            Thread.sleep(interval - 10);
 
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
         if (!isPrepare) {
+            try {
+                Thread.sleep(interval - 10);
+
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
             throw new NADKException(NADKError.NADK_TRY_AGAIN);
         }
 
         BinaryEvent binaryEvent;
         if (firstPlay) {
-            binaryEvent = receivedFrameQueue.poll();
-            if (binaryEvent == null) {
-                AppLog.e(TAG, "firstPlay: receivedFrameQueue.poll(): binaryEvent == null");
+//            binaryEvent = receivedFrameQueue.poll();
+            if (receivedFrameMap.containsKey(frameIndex)) {
+                binaryEvent = receivedFrameMap.get(frameIndex);
+            } else {
+                AppLog.e(TAG, "firstPlay: receivedFrameMap not have frameIndex: " + frameIndex);
+                try {
+                    Thread.sleep( 5);
+
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 throw new NADKException(NADKError.NADK_TRY_AGAIN);
             }
+
+            if (binaryEvent == null) {
+                AppLog.e(TAG, "firstPlay: receivedFrameMap get frameIndex: " + frameIndex + " binaryEvent == null");
+                ++frameIndex;
+                throw new NADKException(NADKError.NADK_TRY_AGAIN);
+            }
+            try {
+                Thread.sleep(interval - 10);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
             cachedFrameList.add(binaryEvent);
             AppLog.d(TAG, "firstPlay: getFrameSize: " + binaryEvent.getEventDataSize() + ", index: " + binaryEvent.getHeader().getIndex() + ", isKeyFrame: " + binaryEvent.getHeader().getIsKeyFrame() + ", EndFlag: " + binaryEvent.getHeader().getEndFlag());
 
+            ++frameIndex;
             if (binaryEvent.getHeader().getEndFlag() == 1 && receivedLastFrame && !isDestroy) {
                 firstPlay = false;
             }
@@ -153,6 +185,12 @@ public class NADKPreRollingStreamingClient implements NADKCustomerStreamingClien
             int index = frameCount % totalFrameCount;
             if (cachedFrameList.isEmpty() || index >= cachedFrameList.size()) {
                 AppLog.e(TAG, "replay["+ loopCount + "]: cachedFrameList.isEmpty() || index >= cachedFrameList.size()");
+                try {
+                    Thread.sleep(interval - 10);
+
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 throw new NADKException(NADKError.NADK_TRY_AGAIN);
             }
 
@@ -161,9 +199,17 @@ public class NADKPreRollingStreamingClient implements NADKCustomerStreamingClien
                 AppLog.e(TAG, "replay["+ loopCount + "]: cachedFrameList.get(" + index + "): binaryEvent == null");
                 throw new NADKException(NADKError.NADK_TRY_AGAIN);
             }
+            try {
+                Thread.sleep(interval - 10);
+
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
             ++frameCount;
             AppLog.d(TAG, "replay["+ loopCount + "] getFrameSize: " + binaryEvent.getEventDataSize() + ", index: " + binaryEvent.getHeader().getIndex() + ", isKeyFrame: " + binaryEvent.getHeader().getIsKeyFrame());
         }
+
+
 
         byte[] frame = binaryEvent.getEventData();
         if (frame == null) {
@@ -213,7 +259,8 @@ public class NADKPreRollingStreamingClient implements NADKCustomerStreamingClien
                 AppLog.e(TAG, "event.getHeader().getEventid() != EXTERNAL_EVENT_ID_PRE_ROLLING_FRAME: " + event.toString());
                 return;
             }
-            receivedFrameQueue.offer(event);
+//            receivedFrameQueue.offer(event);
+            receivedFrameMap.put((int) event.getHeader().getIndex(), event);
             ++totalFrameCount;
             if (!receivedFirstFrame) {
                 receivedFirstFrame = true;

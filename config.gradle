@@ -6,13 +6,13 @@ ext {
 
     // 建立Map存储，对象名、key可以自定义
     androidId = [
-            compileSdkVersion: 30,
-            buildToolsVersion: "30.0.3",
+            compileSdkVersion: 33,
+            buildToolsVersion: "33.0.2",
             minSdkVersion    : 24,
             targetSdkVersion : 28,
 
-            versionCode      : 3,
-            versionName      : "1.1.1",
+            versionCode      : 4,
+            versionName      : "1.1.3_video_debug",
 
     ]
 

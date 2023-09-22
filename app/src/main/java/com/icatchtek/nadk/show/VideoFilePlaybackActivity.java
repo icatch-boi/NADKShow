@@ -13,7 +13,9 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
+import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
 
@@ -40,14 +42,15 @@ import com.icatchtek.nadk.show.utils.DatePickerHelper;
 import com.icatchtek.nadk.show.utils.NADKConfig;
 import com.icatchtek.nadk.webrtc.assist.NADKAuthorization;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
-public class VideoPlaybackActivity extends NADKShowBaseActivity {
-    private static final String TAG = VideoPlaybackActivity.class.getSimpleName();
+public class VideoFilePlaybackActivity extends NADKShowBaseActivity {
+    private static final String TAG = VideoFilePlaybackActivity.class.getSimpleName();
     private static final String[] supportProtocol = {"HLS", "DASH"};
     private List<String> supportProtocolList;
     private Handler handler = new Handler();
@@ -74,6 +77,9 @@ public class VideoPlaybackActivity extends NADKShowBaseActivity {
     private TextView start_time_txt;
     private TextView end_time_txt;
 
+    private TextView debug_info_txt;
+    private String debugInfo;
+
     private KVSArchivedMediaClient kvsArchivedMediaClient;
 
     @Override
@@ -95,6 +101,13 @@ public class VideoPlaybackActivity extends NADKShowBaseActivity {
         topbar_title = findViewById(R.id.exo_top_bar_title);
         play_btn = findViewById(R.id.play_btn);
         initActivityCfg();
+
+        LinearLayout play_protocol_layout = findViewById(R.id.play_protocol_layout);
+        play_protocol_layout.setVisibility(View.GONE);
+        ScrollView debug_info_layout = findViewById(R.id.debug_info_layout);
+        debug_info_layout.setVisibility(View.VISIBLE);
+
+        debug_info_txt = findViewById(R.id.debug_info_txt);
 
         play_btn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -163,7 +176,7 @@ public class VideoPlaybackActivity extends NADKShowBaseActivity {
                 Calendar calendar = Calendar.getInstance();
                 Date date = DateConverter.timeStr2Date(start_time_txt.getText().toString());
                 calendar.setTime(date);
-                DatePickerHelper.showDateTimePickerDialog(VideoPlaybackActivity.this, calendar, new DatePickerHelper.OnDateTimeSelectedBlock() {
+                DatePickerHelper.showDateTimePickerDialog(VideoFilePlaybackActivity.this, calendar, new DatePickerHelper.OnDateTimeSelectedBlock() {
                     @Override
                     public void onDateSelected(int year, int month, int dayOfMonth, int hour, int min, int seconds) {
                         String datetime = String.format("%d/%02d/%02d %02d:%02d:%02d", year, month+1, dayOfMonth, hour, min, seconds);
@@ -181,7 +194,7 @@ public class VideoPlaybackActivity extends NADKShowBaseActivity {
                 Calendar calendar = Calendar.getInstance();
                 Date date = DateConverter.timeStr2Date(end_time_txt.getText().toString());
                 calendar.setTime(date);
-                DatePickerHelper.showDateTimePickerDialog(VideoPlaybackActivity.this, calendar, new DatePickerHelper.OnDateTimeSelectedBlock() {
+                DatePickerHelper.showDateTimePickerDialog(VideoFilePlaybackActivity.this, calendar, new DatePickerHelper.OnDateTimeSelectedBlock() {
                     @Override
                     public void onDateSelected(int year, int month, int dayOfMonth, int hour, int min, int seconds) {
                         String datetime = String.format("%d/%02d/%02d %02d:%02d:%02d", year, month+1, dayOfMonth, hour, min, seconds);
@@ -258,7 +271,7 @@ public class VideoPlaybackActivity extends NADKShowBaseActivity {
                     .setTrackSelector(trackSelector)
                     .build();
 
-            player.addAnalyticsListener(new EventLogger(trackSelector, "ExoPlayerDebug"));
+            player.addAnalyticsListener(new PlayerEventLogger(trackSelector, "ExoPlayerDebug"));
 
             playerView.setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS);
             playerView.setShowNextButton(false);
@@ -277,6 +290,31 @@ public class VideoPlaybackActivity extends NADKShowBaseActivity {
         }
 
 
+    }
+
+    private class PlayerEventLogger extends EventLogger {
+
+        public PlayerEventLogger(DefaultTrackSelector trackSelector, String exoPlayerDebug) {
+            super(trackSelector, exoPlayerDebug);
+        }
+
+        @Override
+        protected void logd(String msg) {
+            super.logd(msg);
+//            debugInfo += msg;
+        }
+
+        @Override
+        protected void loge(String msg) {
+            super.loge(msg);
+            debugInfo += msg;
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    debug_info_txt.setText(debugInfo);
+                }
+            });
+        }
     }
 
     private void releasePlayer() {
@@ -298,23 +336,38 @@ public class VideoPlaybackActivity extends NADKShowBaseActivity {
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
-                        MyProgressDialog.showProgressDialog(VideoPlaybackActivity.this);
+                        MyProgressDialog.showProgressDialog(VideoFilePlaybackActivity.this);
                         if (player.isPlaying() || player.isLoading()) {
                             player.stop();
                         }
+                        debug_info_txt.setText("");
                     }
                 });
 
-                String url = getUrl();
+//                String url = getUrl();
+//
+//                if (url != null && !url.isEmpty()) {
+//                    player(url);
+//                } else {
+//                    handler.post(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            MyProgressDialog.closeProgressDialog();
+//                            MyToast.show(VideoFilePlaybackActivity.this, "play failed");
+//                        }
+//                    });
+//                }
 
-                if (url != null && !url.isEmpty()) {
-                    player(url);
+                List<MediaItem> urls = getUrlList();
+
+                if (urls != null && !urls.isEmpty()) {
+                    playerList(urls);
                 } else {
                     handler.post(new Runnable() {
                         @Override
                         public void run() {
                             MyProgressDialog.closeProgressDialog();
-                            MyToast.show(VideoPlaybackActivity.this, "play failed");
+                            MyToast.show(VideoFilePlaybackActivity.this, "play failed");
                         }
                     });
                 }
@@ -351,6 +404,40 @@ public class VideoPlaybackActivity extends NADKShowBaseActivity {
 
     }
 
+    private List<MediaItem> getUrlList() {
+
+        String STORAGE_PATH = "/storage/self/primary/LocalPlayback";
+        String LOCAL_FILE_PREFIX = "file://";
+        File directory = new File(STORAGE_PATH);
+        List<MediaItem> mediaItemList = new ArrayList<>();
+        MediaItem mediaItem1 = new MediaItem.Builder()
+                .setUri("https://dxtest-hls-public.s3.cn-northwest-1.amazonaws.com.cn/bpsc_hls.m3u8")
+                .setMimeType(MimeTypes.APPLICATION_M3U8)
+                .build();
+        mediaItemList.add(mediaItem1);
+        if (directory.exists()) {
+            if (directory.isDirectory()) {
+                String[] files = directory.list();
+                if (files != null) {
+                    for (String file : files) {
+                        if (file.endsWith(".mp4") || file.endsWith(".MP4") || file.endsWith(".lrv") || file.endsWith(".LRV")) {
+                            String url = LOCAL_FILE_PREFIX + STORAGE_PATH + "/" + file;
+                            MediaItem mediaItem = new MediaItem.Builder()
+                                    .setUri(url)
+                                    .setMimeType(MimeTypes.APPLICATION_MP4)
+                                    .build();
+                            mediaItemList.add(mediaItem);
+                        }
+                    }
+                }
+            }
+        }
+
+        return mediaItemList;
+
+    }
+
+
     private void player(String url) {
         String mimeType = MimeTypes.APPLICATION_M3U8;
         if (url.endsWith(".mp4") || url.endsWith(".MP4")) {
@@ -376,6 +463,24 @@ public class VideoPlaybackActivity extends NADKShowBaseActivity {
                         .setMimeType(type)
                         .build();
                 player.setMediaItem(mediaItem);
+
+                player.seekTo(currentWindow, playbackPosition);
+                player.prepare();
+
+                MyProgressDialog.closeProgressDialog();
+
+            }
+        });
+
+    }
+
+    private void playerList(List<MediaItem> mediaItemList) {
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+
+                player.setPlayWhenReady(playWhenReady);
+                player.setMediaItems(mediaItemList);
 
                 player.seekTo(currentWindow, playbackPosition);
                 player.prepare();

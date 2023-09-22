@@ -3,6 +3,7 @@ package com.icatchtek.nadk.show.timeline;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
 import android.graphics.Paint;
 import android.os.Bundle;
 import android.os.Handler;
@@ -16,6 +17,9 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.MediaItem;
@@ -31,9 +35,10 @@ import com.icatchtek.basecomponent.prompt.MyToast;
 import com.icatchtek.basecomponent.prompt.PercentageProgressDialog;
 import com.icatchtek.basecomponent.utils.ClickUtils;
 import com.icatchtek.baseutil.ThreadPoolUtils;
+import com.icatchtek.baseutil.bitmap.BitmapTools;
 import com.icatchtek.baseutil.device.MyOrientationEventListener;
 import com.icatchtek.baseutil.device.ScreenUtils;
-import com.icatchtek.baseutil.imageloader.ImageLoaderConfig;
+import com.icatchtek.baseutil.file.FileUtil;
 import com.icatchtek.baseutil.info.SystemInfo;
 import com.icatchtek.baseutil.log.AppLog;
 import com.icatchtek.nadk.playback.NADKPlayback;
@@ -42,7 +47,11 @@ import com.icatchtek.nadk.playback.NADKPlaybackClient;
 import com.icatchtek.nadk.playback.NADKPlaybackClientListener;
 import com.icatchtek.nadk.playback.file.NADKFileStatusListener;
 import com.icatchtek.nadk.playback.file.NADKFileTransferListener;
+import com.icatchtek.nadk.playback.type.NADKDateTime;
+import com.icatchtek.nadk.playback.type.NADKFileAvailableInfo;
+import com.icatchtek.nadk.playback.type.NADKFileExtension;
 import com.icatchtek.nadk.playback.type.NADKMediaFile;
+import com.icatchtek.nadk.playback.type.NADKThumbnail;
 import com.icatchtek.nadk.reliant.NADKException;
 import com.icatchtek.nadk.reliant.NADKSignalingType;
 import com.icatchtek.nadk.reliant.NADKWebrtcAuthentication;
@@ -53,7 +62,6 @@ import com.icatchtek.nadk.show.R;
 import com.icatchtek.nadk.show.assist.WebrtcLogStatusListener;
 import com.icatchtek.nadk.show.device.DeviceManager;
 import com.icatchtek.nadk.show.device.NADKLocalDevice;
-import com.icatchtek.nadk.show.imageloader.CustomImageDownloader;
 import com.icatchtek.nadk.show.sdk.DeviceLocalFileListInfo;
 import com.icatchtek.nadk.show.sdk.FileDownloadStatusListener;
 import com.icatchtek.nadk.show.sdk.NADKPlaybackClientService;
@@ -64,17 +72,18 @@ import com.icatchtek.nadk.webrtc.NADKWebrtcClient;
 import com.icatchtek.nadk.webrtc.NADKWebrtcClientStatusListener;
 import com.icatchtek.nadk.webrtc.NADKWebrtcControl;
 import com.icatchtek.nadk.webrtc.assist.NADKAuthorization;
-import com.nostra13.universalimageloader.core.ImageLoader;
-import com.nostra13.universalimageloader.core.listener.PauseOnScrollListener;
 import com.tinyai.libmediacomponent.components.filelist.FileItemInfo;
 import com.tinyai.libmediacomponent.components.filelist.FileListView2;
 import com.tinyai.libmediacomponent.components.filelist.RefreshMode;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class TimeLineActivity extends NADKShowBaseActivity {
     private static final String TAG = TimeLineActivity.class.getSimpleName();
@@ -117,6 +126,7 @@ public class TimeLineActivity extends NADKShowBaseActivity {
     private static final String CACHE_PATH = STORAGE_PATH;
     private static final String LOCAL_FILE_PREFIX = "file://";
     private String cachePath;
+    private String dstPath;
 
     private boolean masterRole = false;
     private NADKWebrtc webrtc;
@@ -140,6 +150,21 @@ public class TimeLineActivity extends NADKShowBaseActivity {
     private NADKLocalDevice nadkLocalDevice;
 
     private ZFTimeLine timeLine;
+    private ImageView thumbnail_imv;
+    private TextView select_time_txv;
+    private RecyclerView rvText;
+    private int lastPosition = 0;
+    private int prevPosition = 0;
+    private int playPosition = 0;
+    private UpdatePlayTimeThread updatePlayTimeThread;
+    private List<VideoInfo> videoInfoList;
+    private List<Date> dates;
+    private List<String> dateList;
+    private StringAdapter stringAdapter;
+    private CenterLayoutManager centerLayoutManager;
+    private final Object playLock = new Object();
+    private long currentPlayId= 0;
+    private static final int MIN_REMAINDER_MEDIA_ITEMS_COUNT = 3;
 
 
     @Override
@@ -165,7 +190,7 @@ public class TimeLineActivity extends NADKShowBaseActivity {
 
         initConnectionStatusUI();
 //        initFileList();
-        initTimeLine();
+
         initActivityCfg();
 
         back_btn.setOnClickListener(new View.OnClickListener() {
@@ -219,31 +244,129 @@ public class TimeLineActivity extends NADKShowBaseActivity {
         initializePlayer();
 
 
-        cachePath = getExternalCacheDir().toString() + "/NADK";
+        cachePath = getExternalCacheDir().toString() + "/NADK/cache";
+        dstPath = getExternalCacheDir().toString() + "/NADK/dst";
         createDirectory(cachePath);
-        createDirectory(cachePath);
+        createDirectory(dstPath);
 
         if (!isFromPV) {
             initWebrtc();
-            ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
-                @Override
-                public void run() {
-                    connect();
-                }
-            }, 200);
+//            ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
+//                @Override
+//                public void run() {
+//                    connect();
+//                }
+//            }, 200);
         } else {
 
             nadkLocalDevice = DeviceManager.getInstance().getDevice(NADKConfig.getInstance().getLanModeAuthorization().getAccessKey());
             playbackClient = nadkLocalDevice.getPlaybackClient();
 
+
+            timeLine = findViewById(R.id.time_line_view);
+            thumbnail_imv = findViewById(R.id.exo_thumbnail_imv);
+            select_time_txv = findViewById(R.id.select_time_txv);
+            rvText = findViewById(R.id.date_rv);
+            SimpleDateFormat formatterProject = new SimpleDateFormat("MM-dd");
+            dates = new ArrayList<>();
+//            dates.add(DateUtil.normalTime2Date("2023-08-01 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-08-02 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-08-03 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-08-06 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-08-09 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-08-11 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-08-21 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-08-22 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-08-25 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-08-29 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-08-31 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-09-01 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-09-02 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-09-03 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-09-04 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-09-05 00:00:00"));
+
+
+//            dates.add(DateUtil.normalTime2Date("2023-08-31 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-09-01 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-09-02 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-09-03 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-09-04 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-09-05 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-09-06 00:00:00"));
+            dates.add(DateUtil.normalTime2Date("2023-09-07 00:00:00"));
+//            dates.add(DateUtil.normalTime2Date("2023-09-08 00:00:00"));
+
+
+            dateList = new ArrayList<>();
+            dateList.add("     ");
+            dateList.add("     ");
+            dateList.add("     ");
+            dateList.add("     ");
+            dateList.add("     ");
+
+            for (Date date : dates) {
+                String dateStr = formatterProject.format(date);
+                dateList.add(dateStr);
+            }
+            dateList.add("     ");
+            dateList.add("     ");
+            dateList.add("     ");
+            dateList.add("     ");
+            dateList.add("     ");
+
+
+            stringAdapter = new StringAdapter(dateList, this);
+            //配置适配器
+            rvText.setAdapter(stringAdapter);
+            centerLayoutManager = new CenterLayoutManager(this, LinearLayoutManager.HORIZONTAL, false);
+
+            //配置布局管理器
+            rvText.setLayoutManager(centerLayoutManager);
+
+            int targetPosition = dateList.size() - 6;
+
+            centerLayoutManager.smoothScrollToPosition(rvText, new RecyclerView.State(), lastPosition, targetPosition);
+
+
+            stringAdapter.setSelectPosition(targetPosition);
+            stringAdapter.setOnItemClickListener(new StringAdapter.OnItemClickListener() {
+                @Override
+                public void onItemClick(View view, int position) {
+                    //自定义Toast
+//                MyToast.show(TimeLineActivity.this, "item"+position);
+                    centerLayoutManager.smoothScrollToPosition(rvText, new RecyclerView.State(), lastPosition, position);
+                    if (lastPosition != position) {
+                        lastPosition = position;
+                        Date date = dates.get(position - 5);
+                        for(VideoInfo info : videoInfoList) {
+                            if (info.getStartTime().getTime() >= date.getTime()) {
+                                timeLine.moveTodate(info.getStartTime().getTime(), true);
+                                break;
+                            }
+                        }
+                    }
+
+                }
+            });
+
             ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
                 @Override
                 public void run() {
                     initPlayback();
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            initTimeLine();
+                        }
+                    });
+
                 }
             }, 200);
 
         }
+
+//        initTimeLine2();
 
     }
 
@@ -371,19 +494,517 @@ public class TimeLineActivity extends NADKShowBaseActivity {
 //        }
     }
 
-    private void initTimeLine() {
-        timeLine = findViewById(R.id.time_line_view);
+    private List<Date> getDateList() {
+        List<Date> dateList = new ArrayList<>();
+        try {
+            List<NADKFileAvailableInfo> fileAvailableInfos = playbackClient.getFileAvailableInfosByDate(new NADKDateTime(2023, 9, 1, 0, 0, 0));
+            AppLog.d(TAG, "fileAvailableInfos: " +fileAvailableInfos);
+            for (NADKFileAvailableInfo availableInfo : fileAvailableInfos) {
+                if (availableInfo.getFileCount() > 0) {
+                    Date date = DateUtil.dayStr2Date(availableInfo.getTimestamp());
+                    dateList.add(date);
+                }
+            }
+        } catch (NADKException e) {
+            e.printStackTrace();
+        }
+        return dateList;
+    }
 
-        List<VideoInfo> videoInfoList = new LinkedList<>();
-        long currentTime = new Date().getTime();
-        videoInfoList.add(new VideoInfo("test_01.mp4", new Date(currentTime - 60 * 60 * 1000), new Date(currentTime - 60 * 60 * 1000 + 8 * 10 * 1000)));
-        videoInfoList.add(new VideoInfo("test_02.mp4", new Date(currentTime - 50 * 60 * 1000), new Date(currentTime - 50 * 60 * 1000 + 8 * 20 * 1000)));
-        videoInfoList.add(new VideoInfo("test_03.mp4", new Date(currentTime - 40 * 60 * 1000), new Date(currentTime - 40 * 60 * 1000 + 8 * 10 * 1000)));
-        videoInfoList.add(new VideoInfo("test_04_SOS.mp4", new Date(currentTime - 30 * 60 * 1000), new Date(currentTime - 30 * 60 * 1000 + 8 * 30 * 1000)));
-        videoInfoList.add(new VideoInfo("test_05.mp4", new Date(currentTime - 20 * 60 * 1000), new Date(currentTime - 20 * 60 * 1000 + 8 * 5 * 1000)));
-        videoInfoList.add(new VideoInfo("test_06.mp4", new Date(currentTime - 10 * 60 * 1000), new Date(currentTime - 10 * 60 * 1000 + 8 * 60 * 1000)));
+    private List<VideoInfo> getVideoInfoList() {
+        fileItemInfoList = localFileListInfo.getDeviceFileInfoList();
+        List<VideoInfo> videoInfoList = new ArrayList<>();
+
+        for (int i = fileItemInfoList.size() - 1; i >=0 ; i--) {
+            FileItemInfo itemInfo = fileItemInfoList.get(i);
+            long startTime = itemInfo.getTime();
+            long endTime = startTime + itemInfo.getFileDuration();
+            NADKMediaFile mediaFile = DeviceLocalFileListInfo.convertToNADKMediaFile(itemInfo);
+            NADKFileExtension fileExtension = localFileListInfo.getFileExtension(mediaFile);
+            String time = DateUtil.timeFormatFileNameString(itemInfo.getTime());
+            String fileName = dstPath + "/" + time + ".mp4";
+            String thumbnailName = dstPath + "/" + time + ".jpg";
+            String cacheFileName = cachePath + "/" + mediaFile.getFileName();
+            if (fileExtension != null) {
+//                cacheFileName = cachePath + "/" + fileExtension.getFileName();
+            }
+
+            File file = new File(fileName);
+            if (!file.exists()) {
+//                File cacheFile = new File(cacheFileName);
+//                if (cacheFile.exists() && mediaFile.getFileSize() == cacheFile.length()) {
+//                    FileUtil.copy(cacheFileName, fileName);
+//                    cacheFile.delete();
+//                }
+                fileName = cacheFileName;
+            } else {
+                File cacheFile = new File(cacheFileName);
+                if (cacheFile.exists()) {
+                    cacheFile.delete();
+                }
+            }
+
+//            NADKThumbnail thumbnail = localFileListInfo.getThumbnailInfo(mediaFile);
+//            String thumbnailName = "";
+//            if (thumbnail != null) {
+//                thumbnailName = cachePath + "/" + thumbnail.getFileName();
+//            }
+            VideoInfo videoInfo = new VideoInfo(mediaFile, fileExtension, fileName, thumbnailName, new Date(startTime), new Date(endTime), mediaFile.isTriggerMode());
+            videoInfoList.add(videoInfo);
+        }
+        return videoInfoList;
+    }
+
+    private void initTimeLine() {
+
+        SimpleDateFormat formatterProject = new SimpleDateFormat("MM-dd");
+        dates = getDateList();
+
+        dateList.clear();
+        dateList.add("     ");
+        dateList.add("     ");
+        dateList.add("     ");
+        dateList.add("     ");
+        dateList.add("     ");
+
+        for (Date date : dates) {
+            String dateStr = formatterProject.format(date);
+            dateList.add(dateStr);
+        }
+        dateList.add("     ");
+        dateList.add("     ");
+        dateList.add("     ");
+        dateList.add("     ");
+        dateList.add("     ");
+
+
+        videoInfoList = getVideoInfoList();
 
         timeLine.setCalstuff(videoInfoList);
+
+
+        timeLine.setListener(new ZFTimeLine.OnZFTimeLineListener() {
+            @Override
+            public void didMoveToDate(long date, int position, boolean showThumbnail) {
+
+
+                if (showThumbnail) {
+                    if (updatePlayTimeThread != null) {
+                        updatePlayTimeThread.setPause(true);
+                    }
+                    String time = timeLine.currentTimeStr();
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            thumbnail_imv.setVisibility(View.VISIBLE);
+                            select_time_txv.setVisibility(View.VISIBLE);
+                            select_time_txv.setText(time);
+                        }
+                    });
+                    if (position < 0 || position >= videoInfoList.size()) {
+                        return;
+                    }
+                    if (position != prevPosition) {
+                        String thunmbnailFile = videoInfoList.get(position).getThumbnailName();
+                        Bitmap bitmap = BitmapTools.getBitmapByPath(thunmbnailFile);
+                        if (bitmap != null) {
+                            thumbnail_imv.setImageBitmap(bitmap);
+                        }
+
+                    }
+                }
+
+                for (int i = 0; i < dates.size(); i++) {
+                    Date date1 = dates.get(i);
+                    if (DateUtil.isSameDay(date1, new Date(date))) {
+                        if (lastPosition != i+5) {
+                            AppLog.d(TAG, "stringAdapter.setSelectPosition: " + i + 5);
+                            centerLayoutManager.smoothScrollToPosition(rvText, new RecyclerView.State(), lastPosition, i + 5);
+                            stringAdapter.setSelectPosition(i + 5);
+
+                            lastPosition = i + 5;
+
+                        }
+
+                    }
+
+                }
+
+                prevPosition = position;
+            }
+
+            @Override
+            public void didMoveToUp(long date, int position) {
+                if (updatePlayTimeThread != null) {
+                    updatePlayTimeThread.setPause(false);
+                }
+                if (position < 0 || position >= videoInfoList.size()) {
+                    return;
+                }
+                if (position != playPosition) {
+                    playPosition = position;
+                    videoInfoList = getVideoInfoList();
+//                    List<VideoInfo> infoList = new ArrayList<>();
+//                    for (int i = position; i < videoInfoList.size(); i++) {
+//
+//                        infoList.add(videoInfoList.get(i));
+//                    }
+
+//                    VideoInfo info = infoList.get(0);
+//                    long offset = date - info.getStartTime().getTime();
+//                    File file = new File(info.getFileName());
+//                    if (!fileExists(info)) {
+//                        offset = 0;
+//                    }
+
+                    VideoInfo info = videoInfoList.get(playPosition);
+                    long offsettmp = date - info.getStartTime().getTime();
+                    if (!fileExists(info)) {
+                        offsettmp = 0;
+                    }
+                    long offset = offsettmp;
+
+                    if (updatePlayTimeThread != null) {
+                        updatePlayTimeThread.setPause(false);
+                    }
+//                    player(infoList, offset);
+                    ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            handler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    MyProgressDialog.showProgressDialog(TimeLineActivity.this);
+                                    if (player.isPlaying() || player.isLoading()) {
+                                        player.stop();
+                                    }
+                                }
+                            });
+//                            ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
+//                                @Override
+//                                public void run() {
+//                                    downloadFile(playPosition + 1);
+//                                    downloadFile(playPosition + 2);
+//                                }
+//                            }, 200);
+
+                            downloadFile(playPosition, true, offset, true, 1);
+
+
+                        }
+                    }, 200);
+                }
+                ThreadPoolUtils.getInstance().schedule(new Runnable() {
+                    @Override
+                    public void run() {
+                        handler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                thumbnail_imv.setVisibility(View.GONE);
+                                select_time_txv.setVisibility(View.GONE);
+                            }
+                        });
+                    }
+                }, 200, TimeUnit.MILLISECONDS);
+
+
+            }
+
+        });
+
+        prevPosition = -1;
+
+        if (videoInfoList.size() > 0) {
+            timeLine.moveTodate(videoInfoList.get(videoInfoList.size() -1).getStartTime().getTime(), true);
+            ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
+                @Override
+                public void run() {
+                    for (int i = videoInfoList.size() -1; i >= 0; i--) {
+                        VideoInfo videoInfo = videoInfoList.get(i);
+                        File file = new File(videoInfo.getThumbnailName());
+                        if (file.exists()) {
+                            AppLog.d(TAG, videoInfo.getThumbnailName() + " is already exist");
+                            continue;
+                        }
+                        NADKMediaFile mediaFile = (NADKMediaFile) videoInfo.getFileInfo();
+                        String path = localFileListInfo.downloadThumbnail(mediaFile);
+                        if (path != null && !path.isEmpty()) {
+                            File srcFile = new File(path);
+                            srcFile.renameTo(new File(videoInfo.getThumbnailName()));
+                        }
+
+                    }
+
+                }
+            }, 200);
+        }
+
+
+
+    }
+
+    private void downloadFileAsync(int index, boolean play, long offset, boolean addToMediaList, int downloadNext) {
+        ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
+            @Override
+            public void run() {
+                downloadFile(index, play, offset, addToMediaList, downloadNext);
+            }
+        }, 200);
+    }
+
+    private void downloadNextFile(int index, boolean play, long offset, boolean addToMediaList, int downloadNext) {
+        if (index >= videoInfoList.size()) {
+            return;
+        }
+
+        VideoInfo videoInfo = videoInfoList.get(index);
+        if (play) {
+            player(videoInfo, offset);
+        } else if (addToMediaList){
+            addMediaItem(videoInfo);
+        }
+
+        if (downloadNext > 0) {
+            downloadFileAsync(index + 1, false, 0, true,  downloadNext - 1);
+        }
+
+        if (downloadNext - 1 == 0) {
+            for (int i = index + 1; i < videoInfoList.size(); i++) {
+                VideoInfo nextVideoInfo = videoInfoList.get(i);
+                addMediaItem(nextVideoInfo);
+            }
+        }
+
+    }
+
+    boolean fileExists(VideoInfo videoInfo) {
+        String dstFile = dstPath + "/" + DateUtil.timeFormatFileNameString(videoInfo.getStartTime().getTime()) + ".mp4";
+        File file = new File(dstFile);
+        if (file.exists()) {
+            AppLog.d(TAG, dstFile + " is already exist");
+            return true;
+        }
+        return false;
+
+//        String cacheFilePath = videoInfo.getFileName();
+//        File cacheFile = new File(cacheFilePath);
+//        NADKMediaFile mediaFile = (NADKMediaFile) videoInfo.getFileInfo();
+//        if (cacheFile.exists()) {
+//            AppLog.d(TAG, cacheFilePath + " is already exist. cacheSize = " + cacheFile.length() + ", fileSize = " + mediaFile.getFileSize());
+//            if (mediaFile.getFileSize() == cacheFile.length()) {
+//                return true;
+//            } else {
+//                cacheFile.delete();
+//            }
+//        }
+//        return false;
+    }
+
+    private void downloadFile(int index, boolean play, long offset, boolean addToMediaList, int downloadNext) {
+        if (index >= videoInfoList.size()) {
+            return;
+        }
+        VideoInfo videoInfo = videoInfoList.get(index);
+
+        if (fileExists(videoInfo)) {
+            downloadNextFile(index, play, offset, addToMediaList, downloadNext);
+            return ;
+        }
+        String dstFile = dstPath + "/" + DateUtil.timeFormatFileNameString(videoInfo.getStartTime().getTime()) + ".mp4";
+
+        if (localFileListInfo != null) {
+//            showDownloadDialog();
+
+            FileDownloadStatusListener fileDownloadStatusListener = new FileDownloadStatusListener(new NADKFileTransferListener() {
+                private long fileSize;
+                private String fileName;
+                boolean downloadNextFile = true;
+
+                @Override
+                public void transferStarted(String fileName, long fileSize) {
+                    this.fileSize = fileSize;
+                    this.fileName = fileName;
+                    setMaxProgressForDownloadDialog(fileSize);
+
+                }
+
+                @Override
+                public void transferFinished(long transferedSize) {
+                    if (fileSize == transferedSize) {
+                        if (fileName != null && !fileName.isEmpty()) {
+//                            File srcFile = new File(fileName);
+//                            createDirectory(STORAGE_PATH);
+                            FileUtil.copy(fileName, dstFile);
+//                            srcFile.renameTo(new File(dstFile));
+                        }
+
+                        if (!play && downloadNextFile) {
+                            downloadNextFile = false;
+                            downloadNextFile(index, play, offset, addToMediaList, downloadNext);
+                        }
+                    }
+
+                }
+
+                @Override
+                public void transferInformation(long transferedSize) {
+                    updateDownloadDialog(transferedSize);
+
+                    if (play && downloadNextFile && transferedSize > 100 * 1000) {
+                        downloadNextFile = false;
+                        downloadNextFile(index, play, offset, addToMediaList, downloadNext);
+                    }
+
+                }
+
+
+            });
+
+//            ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
+//                @Override
+//                public void run() {
+//
+//
+//                    String filePath = localFileListInfo.downloadMediaFile(DeviceLocalFileListInfo.convertToNADKMediaFile(itemInfo), (NADKFileTransferListener) fileDownloadStatusListener);
+//                    dismissDownloadDialog();
+//
+//                }
+//            }, 200);
+//            return LOCAL_FILE_PREFIX + fileDownloadStatusListener.getFileName();
+
+            String filePath = localFileListInfo.downloadLrvFile((NADKMediaFile) videoInfo.getFileInfo(), (NADKFileTransferListener) fileDownloadStatusListener);
+            dismissDownloadDialog();
+//            if (filePath != null && !filePath.isEmpty()) {
+//                File srcFile = new File(filePath);
+//                srcFile.renameTo(new File(dstFile));
+//                return LOCAL_FILE_PREFIX + dstFile;
+//            } else {
+//                return "";
+//            }
+
+        }
+        return;
+    }
+
+    private void initTimeLine2() {
+
+//        timeLine.setBackground(getDrawable(R.color.lightblack));
+        List<VideoInfo> videoInfoList = new LinkedList<>();
+
+
+
+
+
+//        long currentTime = new Date().getTime();
+
+        long currentTime = DateUtil.normalTime2Date("2023-09-04 09:42:00").getTime();
+
+
+        videoInfoList.add(new VideoInfo("test_00.mp4", "test_00.jpg", DateUtil.normalTime2Date("2023-08-01 09:42:00"), DateUtil.normalTime2Date("2023-08-01 09:47:00")));
+        videoInfoList.add(new VideoInfo("test_01.mp4", "test_01.jpg", DateUtil.normalTime2Date("2023-08-01 09:47:00"), DateUtil.normalTime2Date("2023-08-01 09:49:00")));
+        videoInfoList.add(new VideoInfo("test_02.mp4", "test_02.jpg", DateUtil.normalTime2Date("2023-08-01 09:49:00"), DateUtil.normalTime2Date("2023-08-01 09:53:00")));
+        videoInfoList.add(new VideoInfo("test_03_SOS.mp4", "test_03_SOS.jpg", DateUtil.normalTime2Date("2023-08-01 09:56:00"), DateUtil.normalTime2Date("2023-08-01 09:58:00")));
+        videoInfoList.add(new VideoInfo("test_04.mp4", "test_04.jpg", DateUtil.normalTime2Date("2023-08-01 09:58:00"), DateUtil.normalTime2Date("2023-08-01 10:03:00")));
+        videoInfoList.add(new VideoInfo("test_05.mp4", "test_05.jpg", DateUtil.normalTime2Date("2023-08-01 10:03:00"), DateUtil.normalTime2Date("2023-08-01 10:08:00")));
+        videoInfoList.add(new VideoInfo("test_06.mp4", "test_06.jpg", DateUtil.normalTime2Date("2023-08-02 09:58:00"), DateUtil.normalTime2Date("2023-08-02 10:06:00")));
+        videoInfoList.add(new VideoInfo("test_00.mp4", "test_00.jpg", DateUtil.normalTime2Date("2023-08-03 09:42:00"), DateUtil.normalTime2Date("2023-08-03 09:47:00")));
+        videoInfoList.add(new VideoInfo("test_01.mp4", "test_01.jpg", DateUtil.normalTime2Date("2023-08-06 09:47:00"), DateUtil.normalTime2Date("2023-08-06 09:49:00")));
+        videoInfoList.add(new VideoInfo("test_02.mp4", "test_02.jpg", DateUtil.normalTime2Date("2023-08-09 09:49:00"), DateUtil.normalTime2Date("2023-08-09 09:53:00")));
+        videoInfoList.add(new VideoInfo("test_03_SOS.mp4", "test_03_SOS.jpg", DateUtil.normalTime2Date("2023-08-11 09:56:00"), DateUtil.normalTime2Date("2023-08-11 09:58:00")));
+        videoInfoList.add(new VideoInfo("test_04.mp4", "test_04.jpg", DateUtil.normalTime2Date("2023-08-11 09:59:00"), DateUtil.normalTime2Date("2023-08-11 10:03:00")));
+        videoInfoList.add(new VideoInfo("test_05.mp4", "test_05.jpg", DateUtil.normalTime2Date("2023-08-21 09:58:00"), DateUtil.normalTime2Date("2023-08-21 10:03:00")));
+        videoInfoList.add(new VideoInfo("test_06.mp4", "test_06.jpg", DateUtil.normalTime2Date("2023-08-22 09:58:00"), DateUtil.normalTime2Date("2023-08-22 10:06:00")));
+        videoInfoList.add(new VideoInfo("test_07.mp4", "test_07.jpg", DateUtil.normalTime2Date("2023-08-25 09:58:00"), DateUtil.normalTime2Date("2023-08-25 10:06:00")));
+        videoInfoList.add(new VideoInfo("test_07_SOS.mp4", "test_07_SOS.jpg", DateUtil.normalTime2Date("2023-08-25 10:06:00"), DateUtil.normalTime2Date("2023-08-25 10:06:50")));
+        videoInfoList.add(new VideoInfo("test_04.mp4", "test_04.jpg", DateUtil.normalTime2Date("2023-08-29 09:58:00"), DateUtil.normalTime2Date("2023-08-29 10:08:00")));
+        videoInfoList.add(new VideoInfo("test_05.mp4", "test_05.jpg", DateUtil.normalTime2Date("2023-08-31 09:58:00"), DateUtil.normalTime2Date("2023-08-31 10:03:00")));
+        videoInfoList.add(new VideoInfo("test_06.mp4", "test_06.jpg", DateUtil.normalTime2Date("2023-09-01 09:58:00"), DateUtil.normalTime2Date("2023-09-01 10:00:00")));
+        videoInfoList.add(new VideoInfo("test_07.mp4", "test_07.jpg", DateUtil.normalTime2Date("2023-09-02 09:58:00"), DateUtil.normalTime2Date("2023-09-02 10:02:00")));
+        videoInfoList.add(new VideoInfo("test_00.mp4", "test_00.jpg", DateUtil.normalTime2Date("2023-09-03 09:42:00"), DateUtil.normalTime2Date("2023-09-03 09:47:00")));
+        videoInfoList.add(new VideoInfo("test_01.mp4", "test_01.jpg", DateUtil.normalTime2Date("2023-09-03 09:47:00"), DateUtil.normalTime2Date("2023-09-03 09:49:00")));
+        videoInfoList.add(new VideoInfo("test_02.mp4", "test_02.jpg", DateUtil.normalTime2Date("2023-09-04 09:49:00"), DateUtil.normalTime2Date("2023-09-04 09:53:00")));
+        videoInfoList.add(new VideoInfo("test_03_SOS.mp4", "test_03_SOS.jpg", DateUtil.normalTime2Date("2023-09-05 09:56:00"), DateUtil.normalTime2Date("2023-09-05 09:58:00")));
+
+
+
+        timeLine.setCalstuff(videoInfoList);
+
+//        String time = timeLine.currentTimeStr();
+//        handler.post(new Runnable() {
+//            @Override
+//            public void run() {
+//                select_time_txv.setText(time);
+//            }
+//        });
+
+        timeLine.setListener(new ZFTimeLine.OnZFTimeLineListener() {
+            @Override
+            public void didMoveToDate(long date, int position, boolean showThumbnail) {
+
+                if (showThumbnail) {
+                    String time = timeLine.currentTimeStr();
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            thumbnail_imv.setVisibility(View.VISIBLE);
+                            select_time_txv.setVisibility(View.VISIBLE);
+                            select_time_txv.setText(time);
+                        }
+                    });
+                    if (position != prevPosition) {
+                        String thunmbnailFile = "/storage/self/primary/new/" + videoInfoList.get(position).getThumbnailName();
+                        thumbnail_imv.setImageBitmap(BitmapTools.getBitmapByPath(thunmbnailFile));
+                    }
+                }
+
+                for (int i = 0; i < dates.size(); i++) {
+                    Date date1 = dates.get(i);
+                    if (DateUtil.isSameDay(date1, new Date(date))) {
+                        if (lastPosition != i+5) {
+                            centerLayoutManager.smoothScrollToPosition(rvText, new RecyclerView.State(), lastPosition, i + 5);
+                            stringAdapter.setSelectPosition(i + 5);
+                        }
+
+                    }
+
+                }
+
+
+                prevPosition = position;
+            }
+
+            @Override
+            public void didMoveToUp(long date, int position) {
+                if (position != playPosition) {
+                    List<VideoInfo> infoList = new ArrayList<>();
+                    for (int i = position; i < videoInfoList.size(); i++) {
+
+                        infoList.add(videoInfoList.get(i));
+                    }
+
+                    player(infoList, 0);
+                    playPosition = position;
+                }
+                ThreadPoolUtils.getInstance().schedule(new Runnable() {
+                    @Override
+                    public void run() {
+                        handler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                thumbnail_imv.setVisibility(View.GONE);
+                                select_time_txv.setVisibility(View.GONE);
+                            }
+                        });
+                    }
+                }, 200, TimeUnit.MILLISECONDS);
+
+
+            }
+
+        });
+
+        prevPosition = -1;
+        timeLine.moveTodate(videoInfoList.get(videoInfoList.size() -1).getStartTime().getTime(), true);
     }
 
     private void initFileList() {
@@ -514,6 +1135,7 @@ public class TimeLineActivity extends NADKShowBaseActivity {
             playerView.setShowRewindButton(false);
             playerView.setShowFastForwardButton(false);
 
+
             player.addListener(playbackStateListener);
             handler.post(new Runnable() {
                 @Override
@@ -530,7 +1152,7 @@ public class TimeLineActivity extends NADKShowBaseActivity {
     private void releasePlayer() {
         if (player != null) {
             playbackPosition = player.getCurrentPosition();
-            currentWindow = player.getCurrentWindowIndex();
+            currentWindow = player.getCurrentMediaItemIndex();
             playWhenReady = player.getPlayWhenReady();
             player.removeListener(playbackStateListener);
             player.release();
@@ -734,6 +1356,229 @@ public class TimeLineActivity extends NADKShowBaseActivity {
 
     }
 
+    private void player(List<VideoInfo> urlList, long offset) {
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                MyProgressDialog.showProgressDialog(TimeLineActivity.this);
+                if (player.isPlaying() || player.isLoading()) {
+                    player.stop();
+                }
+
+                player.setPlayWhenReady(playWhenReady);
+                player.clearMediaItems();
+                List<MediaItem> mediaItemList = new ArrayList<>();
+                for (VideoInfo videoInfo : urlList) {
+                    String url = videoInfo.getFileName();
+                    MediaItem mediaItem = new MediaItem.Builder()
+                            .setUri(url)
+                            .setMimeType(MimeTypes.APPLICATION_MP4)
+                            .setTag(videoInfo)
+                            .build();
+                    mediaItemList.add(mediaItem);
+
+
+                }
+
+                player.setMediaItems(mediaItemList);
+
+                player.seekTo(currentWindow, offset);
+                player.prepare();
+                if (updatePlayTimeThread == null) {
+                    updatePlayTimeThread = new UpdatePlayTimeThread();
+                    updatePlayTimeThread.start();
+                } else {
+                    updatePlayTimeThread.setPause(false);
+                }
+
+                MyProgressDialog.closeProgressDialog();
+
+            }
+        });
+
+    }
+
+    private void player(VideoInfo videoInfo, long offset) {
+        if (player == null) {
+            return;
+        }
+        synchronized (playLock) {
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    MyProgressDialog.showProgressDialog(TimeLineActivity.this);
+
+                    currentPlayId = new Date().getTime();
+                    if (player.isPlaying() || player.isLoading()) {
+                        player.stop();
+                    }
+
+                    player.setPlayWhenReady(playWhenReady);
+                    player.clearMediaItems();
+                    String url = videoInfo.getFileName();
+                    MediaItem mediaItem = new MediaItem.Builder()
+                            .setUri(url)
+                            .setMimeType(MimeTypes.APPLICATION_MP4)
+                            .setTag(videoInfo)
+                            .build();
+                    player.addMediaItem(mediaItem);
+
+                    player.seekTo(currentWindow, offset);
+                    player.prepare();
+                    if (updatePlayTimeThread == null) {
+                        updatePlayTimeThread = new UpdatePlayTimeThread();
+                        updatePlayTimeThread.start();
+                    } else {
+                        updatePlayTimeThread.setPause(false);
+                    }
+                    MyProgressDialog.closeProgressDialog();
+
+                }
+
+            });
+        }
+    }
+
+    private void addMediaItem(VideoInfo videoInfo) {
+        if (player == null) {
+            return;
+        }
+        synchronized (playLock) {
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+
+                    String url = videoInfo.getFileName();
+                    MediaItem mediaItem = new MediaItem.Builder()
+                            .setUri(url)
+                            .setMimeType(MimeTypes.APPLICATION_MP4)
+                            .setTag(videoInfo)
+                            .build();
+                    player.addMediaItem(mediaItem);
+                }
+            });
+        }
+    }
+
+    private void addMediaItem(long playId, VideoInfo videoInfo) {
+        if (player == null) {
+            return;
+        }
+        synchronized (playLock) {
+            if (playId != currentPlayId) {
+                return;
+            }
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+
+                    String url = videoInfo.getFileName();
+                    MediaItem mediaItem = new MediaItem.Builder()
+                            .setUri(url)
+                            .setMimeType(MimeTypes.APPLICATION_MP4)
+                            .setTag(videoInfo)
+                            .build();
+                    player.addMediaItem(mediaItem);
+                }
+            });
+        }
+    }
+
+    private int getLastOneMediaItemPlayPosition() {
+        if (player == null) {
+            return -1;
+        }
+        synchronized (playLock) {
+            int index = player.getCurrentMediaItemIndex();
+            int count = player.getMediaItemCount();
+            if (count - 1 - index >= MIN_REMAINDER_MEDIA_ITEMS_COUNT) {
+                return 0;
+            }
+
+            int lastItemIndex = count - 1;
+            MediaItem item = player.getMediaItemAt(lastItemIndex);
+            if (item != null) {
+                if (item.playbackProperties != null) {
+                    VideoInfo info = (VideoInfo)item.playbackProperties.tag;
+                    long time = info.getStartTime().getTime();
+                    int position = timeLine.getCurrentVideoInfoIndex(time);
+                    return position;
+                }
+            }
+        }
+        return -1;
+
+    }
+
+    private class UpdatePlayTimeThread extends Thread {
+        private boolean update = false;
+        private boolean pause = false;
+
+        @Override
+        public void run() {
+            update = true;
+            while (update) {
+                if (!pause) {
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (player == null) {
+                                return;
+                            }
+                            MediaItem item = player.getCurrentMediaItem();
+                            int index = player.getCurrentMediaItemIndex();
+                            long offset = player.getCurrentPosition();
+                            if (item != null) {
+                                if (item.playbackProperties != null) {
+                                    VideoInfo info = (VideoInfo)item.playbackProperties.tag;
+
+                                    long time = info.getStartTime().getTime() + offset;
+                                    timeLine.moveTodate2(time, false);
+                                    int position = timeLine.getCurrentIndex();
+                                    AppLog.e(TAG, "index: " + index + ", position: " + position + ", offset: " + offset + ", info: " + info.getFileName() + ", " + info.getStartTime());
+                                    if (position < 0 || position >= videoInfoList.size()) {
+                                        return;
+                                    }
+                                    if (position != playPosition) {
+                                        playPosition = position;
+                                        int nextPosition = playPosition + 1;
+                                        if (nextPosition < videoInfoList.size()) {
+                                            ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    downloadFile(nextPosition, false, 0, false, 0);
+//                                                    downloadFile(nextPosition + 1, false, 0, false, 0);
+                                                }
+                                            }, 200);
+
+                                        }
+                                    }
+                                }
+                            }
+//                            AppLog.e(TAG, "offset: " + offset );
+
+                        }
+                    });
+
+                }
+
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        public void stopRun() {
+            update = false;
+        }
+
+        public void setPause(boolean pause) {
+            this.pause = pause;
+        }
+    }
+
 
     public void setPvLayout(int requestedOrientation) {
         //竖屏
@@ -812,7 +1657,7 @@ public class TimeLineActivity extends NADKShowBaseActivity {
 
 
 
-    private class PlaybackStateListener implements Player.EventListener{
+    private class PlaybackStateListener implements Player.Listener{
 
         @Override
         public void onPlaybackStateChanged(int playbackState) {
@@ -820,6 +1665,9 @@ public class TimeLineActivity extends NADKShowBaseActivity {
             switch (playbackState) {
                 case ExoPlayer.STATE_IDLE:
                     stateString = "ExoPlayer.STATE_IDLE      -";
+                    if (updatePlayTimeThread != null) {
+                        updatePlayTimeThread.setPause(true);
+                    }
                     handler.post(new Runnable() {
                         @Override
                         public void run() {
@@ -839,13 +1687,22 @@ public class TimeLineActivity extends NADKShowBaseActivity {
                             top_bar_title.setText("Playback Succeed");
                         }
                     });
+                    if (updatePlayTimeThread != null) {
+                        updatePlayTimeThread.setPause(false);
+                    }
 
                     break;
                 case ExoPlayer.STATE_ENDED:
                     stateString = "ExoPlayer.STATE_ENDED     -";
+                    if (updatePlayTimeThread != null) {
+                        updatePlayTimeThread.setPause(true);
+                    }
                     break;
                 default:
-                    stateString = "UNKNOWN_STATE             -";
+                    stateString = "UNKNOWN_STATE             - " + playbackState;
+//                    if (updatePlayTimeThread != null) {
+//                        updatePlayTimeThread.setPause(true);
+//                    }
                     break;
             }
             AppLog.d(TAG, "changed state to " + stateString);
@@ -943,6 +1800,10 @@ public class TimeLineActivity extends NADKShowBaseActivity {
     {
         stopWakeup();
         AppLog.i(TAG, "stop viewer");
+        if (updatePlayTimeThread != null) {
+            updatePlayTimeThread.stopRun();
+            updatePlayTimeThread = null;
+        }
         /* destroy playback */
         try {
             if (playback != null) {
@@ -970,7 +1831,9 @@ public class TimeLineActivity extends NADKShowBaseActivity {
         this.fileItemInfoList = null;
         this.webrtcClient = null;
         this.webrtcControl = null;
-        AppLog.reInitLog();
+        if (!isFromPV) {
+            AppLog.reInitLog();
+        }
         return true;
     }
 
@@ -984,8 +1847,8 @@ public class TimeLineActivity extends NADKShowBaseActivity {
     }
 
     private boolean disconnect() {
-        releasePlayer();
         destroyWebrtc();
+        releasePlayer();
         return true;
     }
 
@@ -1043,25 +1906,25 @@ public class TimeLineActivity extends NADKShowBaseActivity {
                 e.printStackTrace();
             }
 
-            CustomImageDownloader downloader = new CustomImageDownloader(localFileListInfo, TimeLineActivity.this);
-            ImageLoaderConfig.initImageLoader(getApplicationContext(), downloader);
-            ImageLoader.getInstance().destroy();
-            ImageLoaderConfig.initImageLoader(getApplicationContext(), downloader);
-            fileListView.setOnScrollListener(new PauseOnScrollListener(ImageLoader.getInstance(), false, false));
-
-            handler.post(new Runnable() {
-                @Override
-                public void run() {
-
-                    if (fileItemInfoList != null) {
-                        fileListView.renderList(fileItemInfoList);
-                    } else {
-                        fileItemInfoList = new LinkedList<>();
-                        fileListView.renderList(fileItemInfoList);
-                    }
-
-                }
-            });
+//            CustomImageDownloader downloader = new CustomImageDownloader(localFileListInfo, TimeLineActivity.this);
+//            ImageLoaderConfig.initImageLoader(getApplicationContext(), downloader);
+//            ImageLoader.getInstance().destroy();
+//            ImageLoaderConfig.initImageLoader(getApplicationContext(), downloader);
+//            fileListView.setOnScrollListener(new PauseOnScrollListener(ImageLoader.getInstance(), false, false));
+//
+//            handler.post(new Runnable() {
+//                @Override
+//                public void run() {
+//
+//                    if (fileItemInfoList != null) {
+//                        fileListView.renderList(fileItemInfoList);
+//                    } else {
+//                        fileItemInfoList = new LinkedList<>();
+//                        fileListView.renderList(fileItemInfoList);
+//                    }
+//
+//                }
+//            });
         }
     }
 
