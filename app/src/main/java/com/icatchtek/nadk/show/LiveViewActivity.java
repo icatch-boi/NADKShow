@@ -339,8 +339,11 @@ public class LiveViewActivity extends NADKShowBaseActivity
     protected void onResume() {
         super.onResume();
 //        enableStreaming();
-        initSurface(streamingRender);
-        initPreRollingSurface(preRollingStreamingRender);
+        if (connecting) {
+            initSurface(streamingRender);
+            initPreRollingSurface(preRollingStreamingRender);
+        }
+
     }
 
     private void initActivityCfg() {

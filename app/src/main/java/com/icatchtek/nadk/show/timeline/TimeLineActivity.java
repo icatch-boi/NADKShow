@@ -294,7 +294,7 @@ public class TimeLineActivity extends NADKShowBaseActivity {
 //            dates.add(DateUtil.normalTime2Date("2023-09-04 00:00:00"));
 //            dates.add(DateUtil.normalTime2Date("2023-09-05 00:00:00"));
 //            dates.add(DateUtil.normalTime2Date("2023-09-06 00:00:00"));
-            dates.add(DateUtil.normalTime2Date("2023-09-07 00:00:00"));
+            dates.add(DateUtil.normalTime2Date("2023-09-01 00:00:00"));
 //            dates.add(DateUtil.normalTime2Date("2023-09-08 00:00:00"));
 
 
@@ -873,6 +873,14 @@ public class TimeLineActivity extends NADKShowBaseActivity {
 //            return LOCAL_FILE_PREFIX + fileDownloadStatusListener.getFileName();
 
             String filePath = localFileListInfo.downloadLrvFile((NADKMediaFile) videoInfo.getFileInfo(), (NADKFileTransferListener) fileDownloadStatusListener);
+            if (filePath == null || filePath.isEmpty()) {
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        MyProgressDialog.closeProgressDialog();
+                    }
+                });
+            }
             dismissDownloadDialog();
 //            if (filePath != null && !filePath.isEmpty()) {
 //                File srcFile = new File(filePath);
