@@ -17,6 +17,7 @@ import android.widget.Toast;
 import com.icatchtek.baseutil.file.FileUtil;
 import com.icatchtek.baseutil.log.AppLog;
 import com.icatchtek.baseutil.permission.PermissionTools;
+import com.icatchtek.nadk.show.timeline.TimeLineActivity;
 import com.icatchtek.nadk.show.utils.NADKConfig;
 import com.icatchtek.nadk.show.utils.NADKShowLog;
 import com.icatchtek.nadk.reliant.NADKException;
@@ -93,6 +94,7 @@ public class MainActivity extends NADKShowBaseActivity {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(MainActivity.this, LanModeActivity.class);
+//                Intent intent = new Intent(MainActivity.this, TimeLineActivity.class);
                 startActivity(intent);
             }
         });
@@ -101,6 +103,7 @@ public class MainActivity extends NADKShowBaseActivity {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(MainActivity.this, DeviceListActivity.class);
+//                Intent intent = new Intent(MainActivity.this, VideoFilePlaybackActivity.class);
                 startActivity(intent);
             }
         });

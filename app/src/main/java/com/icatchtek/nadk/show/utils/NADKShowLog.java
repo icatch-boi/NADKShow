@@ -171,6 +171,14 @@ public class NADKShowLog implements Logger {
         NADKAppLog.setModuleLevel(NADKAppLogModule.NADK_LOG_MODULE_RENDER, NADKAppLogLevel.NADK_LOG_LEVEL_VERB);
         NADKAppLog.setModule(NADKAppLogModule.NADK_LOG_MODULE_APP, true);
         NADKAppLog.setModuleLevel(NADKAppLogModule.NADK_LOG_MODULE_APP, NADKAppLogLevel.NADK_LOG_LEVEL_VERB);
+
+//        NADKAppLog.setModule(NADKAppLogModule.NADK_LOG_MODULE_TINYAIOT, true);
+//        NADKAppLog.setModuleLevel(NADKAppLogModule.NADK_LOG_MODULE_TINYAIOT, NADKAppLogLevel.NADK_LOG_LEVEL_VERB);
+//        NADKAppLog.setModule(NADKAppLogModule.NADK_LOG_MODULE_LWS, true);
+//        NADKAppLog.setModuleLevel(NADKAppLogModule.NADK_LOG_MODULE_LWS, NADKAppLogLevel.NADK_LOG_LEVEL_VERB);
+//        NADKAppLog.setModule(NADKAppLogModule.NADK_LOG_MODULE_THD_LIBS, true);
+//        NADKAppLog.setModuleLevel(NADKAppLogModule.NADK_LOG_MODULE_THD_LIBS, NADKAppLogLevel.NADK_LOG_LEVEL_VERB);
+
         NADKAppLog.writeLog(NADKAppLogModule.NADK_LOG_MODULE_APP, NADKAppLogLevel.NADK_LOG_LEVEL_INFO, TAG, "initNADKAppLog");
 //        com.tinyai.nadk.applog.NADKAppLog.setLog(14, true);
 //        com.tinyai.nadk.applog.NADKAppLog.setLogLevel(14, NADKAppLogLevel.NADK_LOG_LEVEL_VERB);

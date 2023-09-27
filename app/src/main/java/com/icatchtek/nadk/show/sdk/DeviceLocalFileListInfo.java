@@ -3,6 +3,8 @@ package com.icatchtek.nadk.show.sdk;
 import com.icatchtek.nadk.playback.NADKPlaybackClient;
 import com.icatchtek.nadk.playback.file.NADKFileTransferListener;
 import com.icatchtek.nadk.playback.type.NADKDateTime;
+import com.icatchtek.nadk.playback.type.NADKFileExtension;
+import com.icatchtek.nadk.playback.type.NADKFileExtensionType;
 import com.icatchtek.nadk.playback.type.NADKMediaFile;
 import com.icatchtek.nadk.playback.type.NADKThumbnail;
 import com.icatchtek.nadk.reliant.NADKException;
@@ -21,7 +23,7 @@ public class DeviceLocalFileListInfo {
     private static final String TAG = DeviceLocalFileListInfo.class.getSimpleName();
     private static final int STORAGE_INFO_MAX_DAYS = 365;
     private static final int MAX_FILE_COUNT = 300;
-    private static final int FIRST_GET_FILE_COUNT = 20;
+    private static final int FIRST_GET_FILE_COUNT = 200;
     private static final String THUMBNAIL_PREFIX = "datachannel://";
     private Date startTimeOfList;
     private Date endTimeOfList;
@@ -120,6 +122,40 @@ public class DeviceLocalFileListInfo {
 //        return "/storage/self/primary/NADKWebrtcResources/media/cache/20230217_000428.thm_1690193125_614327.tmp.jpg";
     }
 
+    public NADKThumbnail getThumbnailInfo(NADKMediaFile mediaFile) {
+        if (playbackClient == null) {
+            return null;
+        }
+
+        try {
+            NADKThumbnail thumbnail = playbackClient.getThumbnail(mediaFile);
+
+            return thumbnail;
+        } catch (NADKException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+//        return "/storage/self/primary/NADKWebrtcResources/media/cache/20230217_000428.thm_1690193125_614327.tmp.jpg";
+    }
+
+    public NADKFileExtension getFileExtension(NADKMediaFile mediaFile) {
+        if (playbackClient == null) {
+            return null;
+        }
+
+        try {
+            NADKFileExtension fileExtension = playbackClient.getFileExtension(NADKFileExtensionType.NADK_FILE_EXTENSION_TYPE_LRV, mediaFile);
+
+            return fileExtension;
+        } catch (NADKException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+//        return "/storage/self/primary/NADKWebrtcResources/media/cache/20230217_000428.thm_1690193125_614327.tmp.jpg";
+    }
+
     public synchronized String downloadMediaFile(NADKMediaFile mediaFile, NADKFileTransferListener listener) {
         if (playbackClient == null) {
             return null;
@@ -128,6 +164,21 @@ public class DeviceLocalFileListInfo {
         try {
 
             return this.playbackClient.downloadMediaFile(mediaFile, listener);
+        } catch (NADKException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    public synchronized String downloadLrvFile(NADKMediaFile mediaFile, NADKFileTransferListener listener) {
+        if (playbackClient == null) {
+            return null;
+        }
+
+        try {
+
+            return this.playbackClient.downloadLrvFile(mediaFile, listener);
         } catch (NADKException e) {
             e.printStackTrace();
         }

@@ -1,5 +1,6 @@
 package com.icatchtek.nadk.show.assist.impl;
 
+import com.icatchtek.baseutil.log.AppLog;
 import com.icatchtek.nadk.reliant.NADKError;
 import com.icatchtek.nadk.reliant.NADKException;
 import com.icatchtek.nadk.reliant.NADKFrameBuffer;
@@ -20,7 +21,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class StreamingClientAssistImpl
 {
-    private final String LOG_TAG = "stream_client_manager";
+    private final String LOG_TAG = "StreamingClientAssistImpl";
 
     private final NADKLogger logger;
     private final NADKEventHandler eventHandler;
@@ -66,10 +67,11 @@ public class StreamingClientAssistImpl
         this.clientMutex.lock();
         this.streamingClients.put(streamingClient.hashCode(), clientService);
         this.clientMutex.unlock();
+        AppLog.d(LOG_TAG, String.format(Locale.getDefault(), "client[%s] is created", streamingClient.getClientID()));
 
         /* clients exists, prepare sender func */
         if (!this.frameSendRun) {
-            logger.writeCommonLogI(LOG_TAG, "clients increase from 0 to one or more, create sender func");
+            AppLog.d(LOG_TAG, "clients increase from 0 to one or more, create sender func");
             this.prepareSenderFunc();
         }
     }
@@ -81,7 +83,7 @@ public class StreamingClientAssistImpl
             throw new NADKException(NADKError.NADK_INVALID_ARG);
         }
 
-        logger.writeCommonLogI(LOG_TAG, String.format(Locale.getDefault(), "client[%s] will be destroyed", streamingClient.getClientID()));
+        AppLog.d(LOG_TAG, String.format(Locale.getDefault(), "client[%s] will be destroyed", streamingClient.getClientID()));
         this.clientMutex.lock();
         this.streamingClients.remove(streamingClient.hashCode());
         boolean clientsExists = this.streamingClients.size() > 0;
@@ -101,7 +103,7 @@ public class StreamingClientAssistImpl
             throw new NADKException(NADKError.NADK_INVALID_ARG);
         }
 
-        logger.writeCommonLogI(LOG_TAG, String.format(Locale.getDefault(), "client[%s] connected", streamingClient.getClientID()));
+        AppLog.d(LOG_TAG, String.format(Locale.getDefault(), "client[%s] connected", streamingClient.getClientID()));
     }
 
     public void disconnected(NADKStreamingClient streamingClient)
@@ -111,7 +113,7 @@ public class StreamingClientAssistImpl
             throw new NADKException(NADKError.NADK_INVALID_ARG);
         }
 
-        logger.writeCommonLogI(LOG_TAG, String.format(Locale.getDefault(), "client[%s] disconnected", streamingClient.getClientID()));
+        AppLog.d(LOG_TAG, String.format(Locale.getDefault(), "client[%s] disconnected", streamingClient.getClientID()));
     }
 
     public void streamingEnabled(
@@ -122,12 +124,12 @@ public class StreamingClientAssistImpl
             throw new NADKException(NADKError.NADK_INVALID_ARG);
         }
 
-        logger.writeCommonLogI(LOG_TAG, String.format(Locale.getDefault(), "reset key frame after client[%s] connected", streamingClient.getClientID()));
+        AppLog.d(LOG_TAG, String.format(Locale.getDefault(), "reset key frame after client[%s] connected", streamingClient.getClientID()));
         if (this.streamingProducer != null) {
             this.streamingProducer.resetKeyFrame();
         }
 
-        logger.writeCommonLogI(LOG_TAG, String.format(Locale.getDefault(), "client[%s] format changed", streamingClient.getClientID()));
+        AppLog.d(LOG_TAG, String.format(Locale.getDefault(), "client[%s] streamingEnabled", streamingClient.getClientID()));
         clientService.streamingEnabled(audioParameter, videoParameter);
     }
 
@@ -206,7 +208,7 @@ public class StreamingClientAssistImpl
     {
         @Override
         public void run() {
-            logger.writeCommonLogI(LOG_TAG, "AudioFrameSender in");
+            AppLog.d(LOG_TAG, "AudioFrameSender in");
 
             NADKFrameBuffer frameBuffer = new NADKFrameBuffer(10240);
             while (frameSendRun)
@@ -224,7 +226,7 @@ public class StreamingClientAssistImpl
                 sendAudioFrame(frameBuffer);
             }
 
-            logger.writeCommonLogI(LOG_TAG, "AudioFrameSender out");
+            AppLog.d(LOG_TAG, "AudioFrameSender out");
         }
     }
 
@@ -232,7 +234,7 @@ public class StreamingClientAssistImpl
     {
         @Override
         public void run() {
-            logger.writeCommonLogI(LOG_TAG, "VideoFrameSender in");
+            AppLog.d(LOG_TAG, "VideoFrameSender in");
 
             NADKFrameBuffer frameBuffer = new NADKFrameBuffer(1920 * 1080 * 2);
             while (frameSendRun)
@@ -250,7 +252,7 @@ public class StreamingClientAssistImpl
                 sendVideoFrame(frameBuffer);
             }
 
-            logger.writeCommonLogI(LOG_TAG, "VideoFrameSender out");
+            AppLog.d(LOG_TAG, "VideoFrameSender out");
         }
     }
 
@@ -267,14 +269,14 @@ public class StreamingClientAssistImpl
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
-            logger.writeCommonLogI(LOG_TAG, String.format(Locale.getDefault(),
+            AppLog.d(LOG_TAG, String.format(Locale.getDefault(),
                     "send audio frame type: %d, size: %d, pts: %d, through client[%s]",
                     frameBuffer.getFrameType(),
                     frameBuffer.getFrameSize(),
                     frameBuffer.getPresentationTime(),
                     client.getClientID()));
         }
-        logger.writeCommonLogI(LOG_TAG, "sendAudioFrame 44");
+        AppLog.d(LOG_TAG, "sendAudioFrame 44");
     }
 
     public void sendVideoFrame(NADKFrameBuffer frameBuffer)
@@ -290,7 +292,7 @@ public class StreamingClientAssistImpl
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
-            logger.writeCommonLogI(LOG_TAG, String.format(Locale.getDefault(),
+            AppLog.d(LOG_TAG, String.format(Locale.getDefault(),
                     "send video frame type: %d, size: %d, pts: %d, through client[%s]",
                     frameBuffer.getFrameType(),
                     frameBuffer.getFrameSize(),

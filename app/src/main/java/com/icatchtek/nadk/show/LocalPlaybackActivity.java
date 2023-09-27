@@ -42,6 +42,8 @@ import com.icatchtek.nadk.playback.NADKPlaybackClient;
 import com.icatchtek.nadk.playback.NADKPlaybackClientListener;
 import com.icatchtek.nadk.playback.file.NADKFileStatusListener;
 import com.icatchtek.nadk.playback.file.NADKFileTransferListener;
+import com.icatchtek.nadk.playback.type.NADKDateTime;
+import com.icatchtek.nadk.playback.type.NADKFileAvailableInfo;
 import com.icatchtek.nadk.playback.type.NADKMediaFile;
 import com.icatchtek.nadk.reliant.NADKException;
 import com.icatchtek.nadk.reliant.NADKSignalingType;
@@ -791,7 +793,7 @@ public class LocalPlaybackActivity extends NADKShowBaseActivity {
 
 
 
-    private class PlaybackStateListener implements Player.EventListener{
+    private class PlaybackStateListener implements Player.Listener{
 
         @Override
         public void onPlaybackStateChanged(int playbackState) {
@@ -971,6 +973,13 @@ public class LocalPlaybackActivity extends NADKShowBaseActivity {
     private void initPlayback() {
         if (localFileListInfo == null) {
 //            this.playbackClient = playbackClientService.getPlaybackClient(100);
+
+            try {
+                List<NADKFileAvailableInfo> fileAvailableInfos = playbackClient.getFileAvailableInfosByDate(new NADKDateTime(2023, 9, 1, 0, 0, 0));
+                AppLog.d(TAG, "fileAvailableInfos: " +fileAvailableInfos);
+            } catch (NADKException e) {
+                e.printStackTrace();
+            }
 
             localFileListInfo = new DeviceLocalFileListInfo(playbackClient);
             try {

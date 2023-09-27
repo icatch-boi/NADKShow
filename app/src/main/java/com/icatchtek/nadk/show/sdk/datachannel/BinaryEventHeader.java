@@ -2,6 +2,7 @@ package com.icatchtek.nadk.show.sdk.datachannel;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Arrays;
 
 /**
  * Created by sha.liu on 2021/10/21.
@@ -15,7 +16,8 @@ import java.nio.ByteOrder;
 //        uint32_t fps:8;
 //        uint32_t isKeyFrame:1;
 //        uint32_t endflag:1;
-//        uint32_t reserved：22;
+//        uint32_t framesize:20;
+//        uint32_t reserved：2;
 //        };
 
 public class BinaryEventHeader {
@@ -29,12 +31,13 @@ public class BinaryEventHeader {
     private int fps; //8bit
     private int isKeyFrame; //1bit
     private int endFlag; //1bit
-    private int reserved;//22bit
+    private int frameSize; // 20bit
+    private int reserved;//2bit
 
     private byte[] headerByte;
 
 
-    public BinaryEventHeader(short eventid, short index, short width, short height, short fps, short isKeyFrame, short endFlag, short reserved) {
+    public BinaryEventHeader(short eventid, short index, short width, short height, short fps, short isKeyFrame, short endFlag, int frameSize, short reserved) {
         this.eventid = eventid;
         this.index = index;
         this.width = width;
@@ -42,6 +45,7 @@ public class BinaryEventHeader {
         this.fps = fps;
         this.isKeyFrame = isKeyFrame;
         this.endFlag = endFlag;
+        this.frameSize = frameSize;
         this.reserved = reserved;
 
         byte[] headerByte = new byte[HEADER_SIZE];
@@ -55,7 +59,7 @@ public class BinaryEventHeader {
 
 //        int tmp = ((this.fps & 0x000000FF) << 24) | ((this.isKeyFrame & 0x00000001) << 23)  | ((this.endFlag & 0x00000001) << 22) | (this.reserved & 0x003FFFFF);
 
-        int tmp = (this.fps & 0x000000FF) | ((this.isKeyFrame & 0x00000001) << 8)  | ((this.endFlag & 0x00000001) << 9) | ((this.reserved & 0x00FFFFFC) << 10);
+        int tmp = (this.fps & 0x000000FF) | ((this.isKeyFrame & 0x00000001) << 8)  | ((this.endFlag & 0x00000001) << 9) | ((this.frameSize & 0x00FFFFF) << 10) | ((this.reserved & 0x3) << 30);
         buffer.putInt(tmp);
     }
 
@@ -72,7 +76,8 @@ public class BinaryEventHeader {
         this.fps = tmp & 0x000000FF;
         this.isKeyFrame = (tmp & 0x00000100) >> 8;
         this.endFlag = (tmp & 0x00000200) >> 9;
-        this.reserved = tmp & 0xFFFFFC00 >> 10;
+        this.frameSize = (tmp & 0x3FFFFC00) >> 10;
+        this.reserved = tmp & 0xC0000000 >> 30;
     }
 
 
@@ -122,6 +127,7 @@ public class BinaryEventHeader {
                 ", fps=" + fps +
                 ", isKeyFrame=" + isKeyFrame +
                 ", endFlag=" + endFlag +
+                ", frameSize=" + frameSize +
                 ", reserved=" + reserved +
                 ", headerByte=" + headerByte +
                 '}';
