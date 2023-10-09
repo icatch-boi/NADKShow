@@ -1007,10 +1007,10 @@ public class LiveViewActivity extends NADKShowBaseActivity
 
             /* create playback based on webrtc */
 
-            String cachePath = getExternalCacheDir().toString() + "/NADK/cache";
-            String dstPath = getExternalCacheDir().toString() + "/NADK/dst";
+            String cachePath = getExternalCacheDir().toString() + "/NADK";
+//            String dstPath = getExternalCacheDir().toString() + "/NADK/dst";
             createDirectory(cachePath);
-            createDirectory(dstPath);
+//            createDirectory(dstPath);
 //            String path = getExternalCacheDir().toString() + "/NADK";
 //            createDirectory(path);
 //            createDirectory(path);

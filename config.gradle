@@ -12,7 +12,7 @@ ext {
             targetSdkVersion : 28,
 
             versionCode      : 4,
-            versionName      : "1.1.3_video_debug",
+            versionName      : "1.1.3",
 
     ]
 

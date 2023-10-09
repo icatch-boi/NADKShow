@@ -48,8 +48,10 @@ import com.icatchtek.nadk.playback.NADKPlaybackClientListener;
 import com.icatchtek.nadk.playback.file.NADKFileStatusListener;
 import com.icatchtek.nadk.playback.file.NADKFileTransferListener;
 import com.icatchtek.nadk.playback.type.NADKDateTime;
+import com.icatchtek.nadk.playback.type.NADKFile;
 import com.icatchtek.nadk.playback.type.NADKFileAvailableInfo;
 import com.icatchtek.nadk.playback.type.NADKFileExtension;
+import com.icatchtek.nadk.playback.type.NADKLrvFile;
 import com.icatchtek.nadk.playback.type.NADKMediaFile;
 import com.icatchtek.nadk.playback.type.NADKThumbnail;
 import com.icatchtek.nadk.reliant.NADKException;
@@ -126,7 +128,7 @@ public class TimeLineActivity extends NADKShowBaseActivity {
     private static final String CACHE_PATH = STORAGE_PATH;
     private static final String LOCAL_FILE_PREFIX = "file://";
     private String cachePath;
-    private String dstPath;
+//    private String dstPath;
 
     private boolean masterRole = false;
     private NADKWebrtc webrtc;
@@ -164,6 +166,7 @@ public class TimeLineActivity extends NADKShowBaseActivity {
     private CenterLayoutManager centerLayoutManager;
     private final Object playLock = new Object();
     private long currentPlayId= 0;
+    private NADKMediaFile currentDownloadFile = null;
     private static final int MIN_REMAINDER_MEDIA_ITEMS_COUNT = 3;
 
 
@@ -244,10 +247,10 @@ public class TimeLineActivity extends NADKShowBaseActivity {
         initializePlayer();
 
 
-        cachePath = getExternalCacheDir().toString() + "/NADK/cache";
-        dstPath = getExternalCacheDir().toString() + "/NADK/dst";
+        cachePath = getExternalCacheDir().toString() + "/NADK";
+//        dstPath = getExternalCacheDir().toString() + "/NADK/dst";
         createDirectory(cachePath);
-        createDirectory(dstPath);
+//        createDirectory(dstPath);
 
         if (!isFromPV) {
             initWebrtc();
@@ -520,36 +523,31 @@ public class TimeLineActivity extends NADKShowBaseActivity {
             long startTime = itemInfo.getTime();
             long endTime = startTime + itemInfo.getFileDuration();
             NADKMediaFile mediaFile = DeviceLocalFileListInfo.convertToNADKMediaFile(itemInfo);
-            NADKFileExtension fileExtension = localFileListInfo.getFileExtension(mediaFile);
+            NADKLrvFile lrvFile = localFileListInfo.getLrvFile(mediaFile);
             String time = DateUtil.timeFormatFileNameString(itemInfo.getTime());
-            String fileName = dstPath + "/" + time + ".mp4";
-            String thumbnailName = dstPath + "/" + time + ".jpg";
-            String cacheFileName = cachePath + "/" + mediaFile.getFileName();
-            if (fileExtension != null) {
-//                cacheFileName = cachePath + "/" + fileExtension.getFileName();
+//            String fileName = dstPath + "/" + time + ".mp4";
+//            String thumbnailName = dstPath + "/" + time + ".jpg";
+            NADKFile nadkFile = mediaFile;
+            String fileName = cachePath + "/" + mediaFile.getFileName();
+            if (lrvFile != null) {
+                fileName = cachePath + "/" + lrvFile.getFileName();
+                nadkFile = lrvFile;
             }
 
+
             File file = new File(fileName);
-            if (!file.exists()) {
-//                File cacheFile = new File(cacheFileName);
-//                if (cacheFile.exists() && mediaFile.getFileSize() == cacheFile.length()) {
-//                    FileUtil.copy(cacheFileName, fileName);
-//                    cacheFile.delete();
-//                }
-                fileName = cacheFileName;
-            } else {
-                File cacheFile = new File(cacheFileName);
-                if (cacheFile.exists()) {
-                    cacheFile.delete();
+            if (file.exists()) {
+                if (file.length() != nadkFile.getFileSize()) {
+                    file.delete();
                 }
             }
 
-//            NADKThumbnail thumbnail = localFileListInfo.getThumbnailInfo(mediaFile);
-//            String thumbnailName = "";
-//            if (thumbnail != null) {
-//                thumbnailName = cachePath + "/" + thumbnail.getFileName();
-//            }
-            VideoInfo videoInfo = new VideoInfo(mediaFile, fileExtension, fileName, thumbnailName, new Date(startTime), new Date(endTime), mediaFile.isTriggerMode());
+            NADKThumbnail thumbnail = localFileListInfo.getThumbnailInfo(mediaFile);
+            String thumbnailName = "";
+            if (thumbnail != null) {
+                thumbnailName = cachePath + "/" + thumbnail.getFileName();
+            }
+            VideoInfo videoInfo = new VideoInfo(mediaFile, lrvFile, fileName, thumbnailName, new Date(startTime), new Date(endTime), mediaFile.isTriggerMode());
             videoInfoList.add(videoInfo);
         }
         return videoInfoList;
@@ -688,7 +686,14 @@ public class TimeLineActivity extends NADKShowBaseActivity {
 //                                }
 //                            }, 200);
 
-                            downloadFile(playPosition, true, offset, true, 1);
+                            synchronized (playLock) {
+                                currentPlayId = new Date().getTime();
+//                                if (currentDownloadFile != null) {
+//                                    localFileListInfo.abortDownloadLrvFile(currentDownloadFile);
+//                                }
+                            }
+
+                            downloadFile(currentPlayId, playPosition, true, offset, true, 1);
 
 
                         }
@@ -743,29 +748,34 @@ public class TimeLineActivity extends NADKShowBaseActivity {
 
     }
 
-    private void downloadFileAsync(int index, boolean play, long offset, boolean addToMediaList, int downloadNext) {
+    private void downloadFileAsync(long playId, int index, boolean play, long offset, boolean addToMediaList, int downloadNext) {
         ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
             @Override
             public void run() {
-                downloadFile(index, play, offset, addToMediaList, downloadNext);
+                downloadFile(playId, index, play, offset, addToMediaList, downloadNext);
             }
         }, 200);
     }
 
-    private void downloadNextFile(int index, boolean play, long offset, boolean addToMediaList, int downloadNext) {
+    private void downloadNextFile(long playId, int index, boolean play, long offset, boolean addToMediaList, int downloadNext) {
         if (index >= videoInfoList.size()) {
             return;
+        }
+        synchronized (playLock) {
+            if (playId != currentPlayId) {
+                return;
+            }
         }
 
         VideoInfo videoInfo = videoInfoList.get(index);
         if (play) {
-            player(videoInfo, offset);
+            player(playId, videoInfo, offset);
         } else if (addToMediaList){
-            addMediaItem(videoInfo);
+            addMediaItem(playId, videoInfo);
         }
 
         if (downloadNext > 0) {
-            downloadFileAsync(index + 1, false, 0, true,  downloadNext - 1);
+            downloadFileAsync(playId, index + 1, false, 0, true,  downloadNext - 1);
         }
 
         if (downloadNext - 1 == 0) {
@@ -778,39 +788,46 @@ public class TimeLineActivity extends NADKShowBaseActivity {
     }
 
     boolean fileExists(VideoInfo videoInfo) {
-        String dstFile = dstPath + "/" + DateUtil.timeFormatFileNameString(videoInfo.getStartTime().getTime()) + ".mp4";
-        File file = new File(dstFile);
-        if (file.exists()) {
-            AppLog.d(TAG, dstFile + " is already exist");
-            return true;
-        }
-        return false;
-
-//        String cacheFilePath = videoInfo.getFileName();
-//        File cacheFile = new File(cacheFilePath);
-//        NADKMediaFile mediaFile = (NADKMediaFile) videoInfo.getFileInfo();
-//        if (cacheFile.exists()) {
-//            AppLog.d(TAG, cacheFilePath + " is already exist. cacheSize = " + cacheFile.length() + ", fileSize = " + mediaFile.getFileSize());
-//            if (mediaFile.getFileSize() == cacheFile.length()) {
-//                return true;
-//            } else {
-//                cacheFile.delete();
-//            }
+//        String dstFile = dstPath + "/" + DateUtil.timeFormatFileNameString(videoInfo.getStartTime().getTime()) + ".mp4";
+//        File file = new File(dstFile);
+//        if (file.exists()) {
+//            AppLog.d(TAG, dstFile + " is already exist");
+//            return true;
 //        }
 //        return false;
+
+        String cacheFilePath = videoInfo.getFileName();
+        File cacheFile = new File(cacheFilePath);
+        NADKLrvFile mediaFile = (NADKLrvFile) videoInfo.getFileExtension();
+        if (cacheFile.exists()) {
+            AppLog.d(TAG, cacheFilePath + " is already exist. cacheSize = " + cacheFile.length() + ", fileSize = " + mediaFile.getFileSize());
+            if (mediaFile.getFileSize() == cacheFile.length()) {
+                return true;
+            } else {
+                cacheFile.delete();
+            }
+        }
+        return false;
     }
 
-    private void downloadFile(int index, boolean play, long offset, boolean addToMediaList, int downloadNext) {
+    private void downloadFile(long playId, int index, boolean play, long offset, boolean addToMediaList, int downloadNext) {
         if (index >= videoInfoList.size()) {
             return;
         }
+
+        synchronized (playLock) {
+            if (playId != currentPlayId) {
+                return;
+            }
+        }
+
         VideoInfo videoInfo = videoInfoList.get(index);
 
         if (fileExists(videoInfo)) {
-            downloadNextFile(index, play, offset, addToMediaList, downloadNext);
+            downloadNextFile(playId, index, play, offset, addToMediaList, downloadNext);
             return ;
         }
-        String dstFile = dstPath + "/" + DateUtil.timeFormatFileNameString(videoInfo.getStartTime().getTime()) + ".mp4";
+//        String dstFile = dstPath + "/" + DateUtil.timeFormatFileNameString(videoInfo.getStartTime().getTime()) + ".mp4";
 
         if (localFileListInfo != null) {
 //            showDownloadDialog();
@@ -834,13 +851,13 @@ public class TimeLineActivity extends NADKShowBaseActivity {
                         if (fileName != null && !fileName.isEmpty()) {
 //                            File srcFile = new File(fileName);
 //                            createDirectory(STORAGE_PATH);
-                            FileUtil.copy(fileName, dstFile);
+//                            FileUtil.copy(fileName, dstFile);
 //                            srcFile.renameTo(new File(dstFile));
                         }
 
                         if (!play && downloadNextFile) {
                             downloadNextFile = false;
-                            downloadNextFile(index, play, offset, addToMediaList, downloadNext);
+                            downloadNextFile(playId, index, play, offset, addToMediaList, downloadNext);
                         }
                     }
 
@@ -852,7 +869,7 @@ public class TimeLineActivity extends NADKShowBaseActivity {
 
                     if (play && downloadNextFile && transferedSize > 100 * 1000) {
                         downloadNextFile = false;
-                        downloadNextFile(index, play, offset, addToMediaList, downloadNext);
+                        downloadNextFile(playId, index, play, offset, addToMediaList, downloadNext);
                     }
 
                 }
@@ -872,7 +889,8 @@ public class TimeLineActivity extends NADKShowBaseActivity {
 //            }, 200);
 //            return LOCAL_FILE_PREFIX + fileDownloadStatusListener.getFileName();
 
-            String filePath = localFileListInfo.downloadLrvFile((NADKMediaFile) videoInfo.getFileInfo(), (NADKFileTransferListener) fileDownloadStatusListener);
+            currentDownloadFile = (NADKMediaFile) videoInfo.getFileInfo();
+            String filePath = localFileListInfo.downloadLrvFile(currentDownloadFile, (NADKFileTransferListener) fileDownloadStatusListener);
             if (filePath == null || filePath.isEmpty()) {
                 handler.post(new Runnable() {
                     @Override
@@ -1268,7 +1286,7 @@ public class TimeLineActivity extends NADKShowBaseActivity {
 //            }, 200);
 //            return LOCAL_FILE_PREFIX + fileDownloadStatusListener.getFileName();
 
-            String filePath = localFileListInfo.downloadMediaFile(DeviceLocalFileListInfo.convertToNADKMediaFile(itemInfo), (NADKFileTransferListener) fileDownloadStatusListener);
+            String filePath = localFileListInfo.downloadLrvFile(DeviceLocalFileListInfo.convertToNADKMediaFile(itemInfo), (NADKFileTransferListener) fileDownloadStatusListener);
             dismissDownloadDialog();
             if (filePath != null && !filePath.isEmpty()) {
                 File srcFile = new File(filePath);
@@ -1406,17 +1424,20 @@ public class TimeLineActivity extends NADKShowBaseActivity {
 
     }
 
-    private void player(VideoInfo videoInfo, long offset) {
+    private void player(long playId, VideoInfo videoInfo, long offset) {
         if (player == null) {
             return;
         }
         synchronized (playLock) {
+            if (playId != currentPlayId) {
+                return;
+            }
             handler.post(new Runnable() {
                 @Override
                 public void run() {
                     MyProgressDialog.showProgressDialog(TimeLineActivity.this);
 
-                    currentPlayId = new Date().getTime();
+//                    currentPlayId = new Date().getTime();
                     if (player.isPlaying() || player.isLoading()) {
                         player.stop();
                     }
@@ -1439,6 +1460,9 @@ public class TimeLineActivity extends NADKShowBaseActivity {
                     } else {
                         updatePlayTimeThread.setPause(false);
                     }
+
+                    thumbnail_imv.setVisibility(View.GONE);
+                    select_time_txv.setVisibility(View.GONE);
                     MyProgressDialog.closeProgressDialog();
 
                 }
@@ -1554,7 +1578,7 @@ public class TimeLineActivity extends NADKShowBaseActivity {
                                             ThreadPoolUtils.getInstance().executorNetThread(new Runnable() {
                                                 @Override
                                                 public void run() {
-                                                    downloadFile(nextPosition, false, 0, false, 0);
+                                                    downloadFile(currentPlayId, nextPosition, false, 0, false, 0);
 //                                                    downloadFile(nextPosition + 1, false, 0, false, 0);
                                                 }
                                             }, 200);
