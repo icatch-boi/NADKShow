@@ -97,7 +97,11 @@ public class NADKConfig {
         if (signalingType == NADKSignalingType.NADK_SIGNALING_TYPE_KVS) {
             cafile = AWS_CA;
         }
-        authentication.setCertFile(NADK_CA_FILE_PATH + "/" + cafile);
+
+        if (authentication != null) {
+            authentication.setCertFile(NADK_CA_FILE_PATH + "/" + cafile);
+        }
+
         return authentication;
     }
 
